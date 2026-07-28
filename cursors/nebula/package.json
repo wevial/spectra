@@ -1,0 +1,15 @@
+{
+  "name": "nebula-cursor",
+  "version": "1.0.0",
+  "description": "A WebGL2 nebula you can part with your cursor — a fluid-sim displacement field that always heals back.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

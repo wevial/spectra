@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Nebula cursor</title>
+    <meta name="description" content="A WebGL2 nebula you can part with your cursor — a fluid-sim displacement field that always heals back." />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        background: #050113; /* pre-GL paint, matches the space gradient top */
+        overflow: hidden;
+        color: #cfe7df;
+        font-family: 'SF Mono', Menlo, Consolas, monospace;
+      }
+      #gl {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        touch-action: none;
+        z-index: 0;
+      }
+
+      /* Static fallback when WebGL2 / float buffers are unavailable. */
+      body.no-gl {
+        background:
+          radial-gradient(120% 90% at 30% 12%, rgba(255, 92, 190, 0.35), transparent 55%),
+          radial-gradient(110% 80% at 72% 30%, rgba(140, 88, 247, 0.40), transparent 60%),
+          radial-gradient(130% 100% at 50% 80%, rgba(64, 158, 255, 0.28), transparent 65%),
+          #050113;
+      }
+      body.no-gl #gl { display: none; }
+
+      .hint {
+        position: fixed;
+        left: 0; right: 0; bottom: max(4vh, env(safe-area-inset-bottom));
+        text-align: center;
+        z-index: 1;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(207, 231, 223, 0.5);
+        pointer-events: none;
+        animation: fade 0.8s ease-out both;
+      }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      @media (pointer: coarse) { .hint { display: none; } }
+      @media (prefers-reduced-motion: reduce) { .hint { animation: none; } }
+    </style>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+    <p class="hint">move your cursor through the gas</p>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
