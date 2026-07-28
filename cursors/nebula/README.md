@@ -5,6 +5,8 @@ bends a displacement field rather than moving color: clouds thin where you
 pass, pile up at the rim, and always heal back to the untouched procedural
 cloud. Colors never mix, so the nebula can't be stirred to mud.
 
+![The nebula mid-parting — a cursor sweep has carved a lane and left a vortex swirl in the gas](docs/hero.png)
+
 Extracted from a larger scroll-narrative site — this is the pure nebula +
 cursor interaction, framework-free.
 
