@@ -39,6 +39,7 @@ panel((gui) => {
   gui.add(c, 'press', 1, 5, 0.1).name('hold boost');
   gui.add(c, 'core', 0, 0.05, 0.001);
   gui.add(c, 'lag', 0, 1, 0.01).name('lag (s)');
+  gui.add(c, 'idle', 0.5, 20, 0.5).name('return (s)');
   const source = gui.addFolder('content');
   source.add({ pick: () => picker.click() }, 'pick').name('image or video…');
   source.add({ poster: () => void fx.setSource(null) }, 'poster').name('grid poster');
