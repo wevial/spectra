@@ -2,6 +2,8 @@
 
 WebGL2 cursor effects and image filters, plus a gallery for testing them.
 
+**[Gallery →](https://spectra.kovial.workers.dev)** (desktop, move your mouse through it)
+
 | Effect | |
 |---|---|
 | [`cursors/glitch`](cursors/glitch) | Pixel-block tearing with an RGB split over a retro rainbow still life |
