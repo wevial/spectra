@@ -16,6 +16,7 @@ export default defineConfig({
       input: {
         home: page('index.html'),
         glitch: page('glitch/index.html'),
+        dither: page('dither/index.html'),
         nebula: page('nebula/index.html'),
       },
     },

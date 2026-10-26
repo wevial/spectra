@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@spectra/core": "workspace:*",
+    "@spectra/dither": "workspace:*",
     "@spectra/glitch": "workspace:*",
     "@spectra/nebula": "workspace:*",
     "lil-gui": "^0.20.0"

@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/dither",
+  "version": "0.1.0",
+  "description": "A ringed planet in ordered (Bayer) dither, lit from the cursor; the trail paints light and coarsens the dither into chunky pixels.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

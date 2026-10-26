@@ -87,6 +87,11 @@ body {
     radial-gradient(130% 100% at 50% 80%, rgba(64, 158, 255, 0.28), transparent 65%),
     #050113;
 }
+.dither-fallback {
+  background:
+    radial-gradient(circle at 42% 42%, #ffe8a3, #ff6b4a 30%, #5c1d5e 52%, transparent 54%),
+    #120a1f;
+}
 .glitch-fallback {
   background:
     linear-gradient(90deg, transparent 8%, #ff3b3b 14%, #ffd23b 18%, #3bff7a 21%, #3bc8ff 24%, #8a3bff 28%, transparent 34%),

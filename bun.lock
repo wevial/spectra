@@ -13,12 +13,20 @@
       "name": "@spectra/gallery",
       "dependencies": {
         "@spectra/core": "workspace:*",
+        "@spectra/dither": "workspace:*",
         "@spectra/glitch": "workspace:*",
         "@spectra/nebula": "workspace:*",
         "lil-gui": "^0.20.0",
       },
       "devDependencies": {
         "vite": "^7.1.0",
+      },
+    },
+    "cursors/dither": {
+      "name": "@spectra/dither",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
       },
     },
     "cursors/glitch": {
@@ -232,6 +240,8 @@
     "@sindresorhus/is": ["@sindresorhus/is@7.2.0", "", {}, "sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw=="],
 
     "@spectra/core": ["@spectra/core@workspace:packages/core"],
+
+    "@spectra/dither": ["@spectra/dither@workspace:cursors/dither"],
 
     "@spectra/gallery": ["@spectra/gallery@workspace:apps/gallery"],
 

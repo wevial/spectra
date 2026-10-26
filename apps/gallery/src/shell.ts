@@ -1,6 +1,6 @@
 import GUI from 'lil-gui';
 
-export const EFFECTS = ['glitch', 'nebula'] as const;
+export const EFFECTS = ['glitch', 'dither', 'nebula'] as const;
 
 export function renderNav() {
   const nav = document.querySelector<HTMLElement>('.nav')!;
