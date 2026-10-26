@@ -2,7 +2,7 @@
 
 WebGL2 cursor effects and image filters, plus a gallery for testing them.
 
-**[Gallery →](https://spectra.kovial.workers.dev)** (desktop, move your mouse through it)
+**[Gallery →](https://spectra.kovial.co)** (desktop, move your mouse through it)
 
 | Effect | |
 |---|---|

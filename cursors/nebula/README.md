@@ -5,7 +5,7 @@ bends a displacement field rather than moving color: clouds thin where you
 pass, pile up at the rim, and always heal back to the untouched procedural
 cloud. Colors never mix, so the nebula can't be stirred to mud.
 
-**[Live demo →](https://spectra.kovial.workers.dev/nebula/)** (desktop — move your mouse through the gas)
+**[Live demo →](https://spectra.kovial.co/nebula/)** (desktop — move your mouse through the gas)
 
 ![The nebula mid-parting — a cursor sweep has carved a lane and left a vortex swirl in the gas](docs/hero.png)
 

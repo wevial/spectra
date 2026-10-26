@@ -4,6 +4,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "spectra",
   "compatibility_date": "2026-10-01",
+  // Custom domain: Cloudflare creates the DNS record and certificate.
+  "routes": [{ "pattern": "spectra.kovial.co", "custom_domain": true }],
+  // Kept on: the archived nebula-cursor Pages site redirects to workers.dev.
+  "workers_dev": true,
   "assets": {
     "directory": "./dist",
     "not_found_handling": "404-page"
