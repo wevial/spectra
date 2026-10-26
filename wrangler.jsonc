@@ -1,0 +1,11 @@
+// Static assets only: the gallery build in dist/. Each effect is its own
+// HTML page, so no SPA fallback is needed.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spectra",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}
