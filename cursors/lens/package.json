@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/lens",
+  "version": "0.1.0",
+  "description": "An invisible point mass under the cursor that gravitationally lenses any image, canvas or video into arcs and Einstein rings.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

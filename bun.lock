@@ -16,6 +16,7 @@
         "@spectra/core": "workspace:*",
         "@spectra/dither": "workspace:*",
         "@spectra/glitch": "workspace:*",
+        "@spectra/lens": "workspace:*",
         "@spectra/nebula": "workspace:*",
         "lil-gui": "^0.20.0",
       },
@@ -39,6 +40,13 @@
     },
     "cursors/glitch": {
       "name": "@spectra/glitch",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/lens": {
+      "name": "@spectra/lens",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
@@ -256,6 +264,8 @@
     "@spectra/gallery": ["@spectra/gallery@workspace:apps/gallery"],
 
     "@spectra/glitch": ["@spectra/glitch@workspace:cursors/glitch"],
+
+    "@spectra/lens": ["@spectra/lens@workspace:cursors/lens"],
 
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
 

@@ -12,6 +12,7 @@
     "@spectra/blackhole": "workspace:*",
     "@spectra/dither": "workspace:*",
     "@spectra/glitch": "workspace:*",
+    "@spectra/lens": "workspace:*",
     "@spectra/nebula": "workspace:*",
     "lil-gui": "^0.20.0"
   },

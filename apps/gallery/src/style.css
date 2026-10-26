@@ -93,6 +93,12 @@ body {
     radial-gradient(60% 40% at 30% 30%, rgba(120, 50, 160, 0.35), transparent),
     #030208;
 }
+.lens-fallback {
+  background:
+    linear-gradient(rgba(20, 16, 30, 0.1) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(20, 16, 30, 0.1) 1px, transparent 1px) 0 0 / 24px 24px,
+    #f2ede3;
+}
 .dither-fallback {
   background:
     radial-gradient(circle at 42% 42%, #ffe8a3, #ff6b4a 30%, #5c1d5e 52%, transparent 54%),

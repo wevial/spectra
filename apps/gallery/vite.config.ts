@@ -18,6 +18,7 @@ export default defineConfig({
         glitch: page('glitch/index.html'),
         dither: page('dither/index.html'),
         blackhole: page('blackhole/index.html'),
+        lens: page('lens/index.html'),
         nebula: page('nebula/index.html'),
       },
     },
