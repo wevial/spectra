@@ -1,0 +1,19 @@
+{
+  "name": "@spectra/gallery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "@spectra/core": "workspace:*",
+    "@spectra/glitch": "workspace:*",
+    "@spectra/nebula": "workspace:*",
+    "lil-gui": "^0.20.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

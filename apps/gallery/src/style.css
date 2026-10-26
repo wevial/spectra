@@ -1,0 +1,121 @@
+:root {
+  --bg: #0b0910;
+  --fg: #ece6f2;
+  --muted: rgba(236, 230, 242, 0.5);
+  --line: rgba(236, 230, 242, 0.12);
+  --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nav {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(11, 9, 16, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+}
+.nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s;
+}
+.nav a:hover { color: var(--fg); }
+.nav a[aria-current='page'] { color: var(--fg); background: rgba(236, 230, 242, 0.1); }
+.nav .brand { color: var(--fg); font-weight: 500; }
+
+/* Full-viewport effect page. */
+.stage {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+
+/* Home: a live, hoverable preview of every effect. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+  padding: 80px 16px 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.card {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  text-decoration: none;
+  background: #140f18;
+}
+.card span {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(11, 9, 16, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Static fallbacks when WebGL2 / float targets are unavailable. */
+.nebula-fallback {
+  background:
+    radial-gradient(120% 90% at 30% 12%, rgba(255, 92, 190, 0.35), transparent 55%),
+    radial-gradient(110% 80% at 72% 30%, rgba(140, 88, 247, 0.4), transparent 60%),
+    radial-gradient(130% 100% at 50% 80%, rgba(64, 158, 255, 0.28), transparent 65%),
+    #050113;
+}
+.glitch-fallback {
+  background:
+    linear-gradient(90deg, transparent 8%, #ff3b3b 14%, #ffd23b 18%, #3bff7a 21%, #3bc8ff 24%, #8a3bff 28%, transparent 34%),
+    radial-gradient(30% 45% at 50% 46%, #ffb08a, #c4505a 60%, transparent 62%),
+    linear-gradient(#2a1520, #4a2230);
+}
+
+/* Tuning panel, themed to match. */
+.lil-gui {
+  --background-color: rgba(11, 9, 16, 0.72);
+  --widget-color: rgba(236, 230, 242, 0.08);
+  --hover-color: rgba(236, 230, 242, 0.14);
+  --focus-color: rgba(236, 230, 242, 0.2);
+  --number-color: #ffb08a;
+  --string-color: #9fe8c8;
+  --font-family: var(--mono);
+  --font-size: 11px;
+  --title-background-color: transparent;
+  --width: 280px;
+}
+.lil-gui.root {
+  top: 16px !important;
+  right: 16px !important;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .lil-gui.root { top: auto !important; bottom: 16px !important; left: 16px !important; --width: auto; }
+}
