@@ -12,6 +12,7 @@ panel((gui) => {
   const hole = gui.addFolder('hole');
   hole.add(c, 'size', 0.02, 0.2, 0.005).name('shadow size');
   hole.add(c, 'lag', 0, 2, 0.05).name('lag (s)');
+  hole.add(c, 'idle', 0.5, 20, 0.5).name('return (s)');
   hole.add(c, 'wake', 0, 4, 0.05);
   hole.add(c, 'fade', 0.1, 4, 0.05).name('wake fade (s)');
   hole.add(c, 'radius', 0.03, 0.5, 0.01).name('wake radius');

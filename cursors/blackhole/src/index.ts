@@ -17,6 +17,8 @@ export const DEFAULTS = {
   spin: 1,
   /** Seconds for the hole to catch up with the cursor. */
   lag: 0.35,
+  /** Seconds to drift back toward center after the cursor leaves. */
+  idle: 6,
   /** How far the cursor trail drags the sky. */
   wake: 1,
   stars: 1,
@@ -58,16 +60,30 @@ export function mount(container: HTMLElement, opts: Partial<BlackHoleConfig> = {
 
   // The hole eases toward the cursor; with no cursor it drifts near center.
   const hole = { x: 0.5, y: 0.5 };
+  const anchor = { x: 0.5, y: 0.5 }; // where the hole was when the cursor left
+  let idleTime = 0;
   let time = 0;
 
   stage.start((dt) => {
     if (!reducedMotion.matches) time += dt;
     trail!.update(pointer, dt, time, config);
 
+    // When the cursor leaves, the hole stays put, then over `idle` seconds
+    // eases into a slow wander around center instead of snapping there.
+    if (pointer.active) {
+      idleTime = 0;
+    } else {
+      if (idleTime === 0) { anchor.x = hole.x; anchor.y = hole.y; }
+      idleTime += dt;
+    }
+    const wander = { x: 0.5 + Math.sin(time * 0.13) * 0.06, y: 0.5 + Math.sin(time * 0.17) * 0.04 };
+    const s = Math.min(idleTime / Math.max(config.idle, 0.001), 1);
+    const settle = s * s * (3 - 2 * s);
     const target = pointer.active
       ? { x: pointer.x, y: pointer.y }
-      : { x: 0.5 + Math.sin(time * 0.13) * 0.06, y: 0.5 + Math.sin(time * 0.17) * 0.04 };
-    const k = 1 - Math.exp(-dt / Math.max(config.lag / 3, 0.001));
+      : { x: anchor.x + (wander.x - anchor.x) * settle, y: anchor.y + (wander.y - anchor.y) * settle };
+    const lag = pointer.active ? config.lag : Math.max(config.lag, 1);
+    const k = 1 - Math.exp(-dt / Math.max(lag / 3, 0.001));
     hole.x += (target.x - hole.x) * k;
     hole.y += (target.y - hole.y) * k;
 
