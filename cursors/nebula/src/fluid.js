@@ -4,13 +4,13 @@
 // base every frame through the bent coordinates, so colors never mix and the
 // nebula always heals to its untouched shape.
 
-import { Program, createFBO, createDoubleFBO, makeBlit } from './gl.js';
+import { Program, createFBO, createDoubleFBO, makeBlit } from '@spectra/core';
 import {
   VERTEX, ADVECTION, OFFSET_UPDATE, CLOUD, SPLAT,
   DIVERGENCE, PRESSURE, GRADIENT_SUBTRACT,
 } from './shaders.js';
 
-const CONFIG = {
+export const CONFIG = {
   simResolution: 224,        // velocity/pressure grid (short edge)
   offsetResolution: 512,     // displacement field (short edge)
   cloudResolution: 1024,     // rendered nebula texture (short edge)

@@ -1,0 +1,8 @@
+{
+  "name": "@spectra/core",
+  "version": "0.1.0",
+  "description": "WebGL2 plumbing shared by spectra effects: programs, ping-pong FBOs, fullscreen blit, stage.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts"
+}

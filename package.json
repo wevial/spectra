@@ -1,0 +1,17 @@
+{
+  "name": "spectra",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "cursors/*", "apps/*"],
+  "scripts": {
+    "dev": "bun --filter @spectra/gallery dev",
+    "build": "bun --filter @spectra/gallery build",
+    "preview": "bun --filter @spectra/gallery preview",
+    "typecheck": "tsc --noEmit",
+    "deploy": "bun run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "wrangler": "^4.40.0"
+  }
+}

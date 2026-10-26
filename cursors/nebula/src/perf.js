@@ -22,18 +22,16 @@ const SETTLE_S = 1.5;      // ignore frames right after a tier change (rebuild j
 
 export class Governor {
   // onApply(tier) reconfigures the renderer; onFallback() swaps to static CSS.
-  constructor({ onApply, onFallback, debug = false }) {
+  // tier locks a quality tier (TIERS.length = static fallback).
+  constructor({ onApply, onFallback, tier, debug = false }) {
     this.onApply = onApply;
     this.onFallback = onFallback;
     this.debug = debug;
-
-    const params = new URLSearchParams(location.search);
-    const forced = params.get('tier');
-    this.locked = forced !== null;
+    this.locked = tier != null;
 
     const coarse = matchMedia('(pointer: coarse)').matches;
     this.tier = this.locked
-      ? Math.min(Math.max(parseInt(forced, 10) || 0, 0), TIERS.length)
+      ? Math.min(Math.max(Math.trunc(tier) || 0, 0), TIERS.length)
       : (coarse ? 2 : 0);
 
     this.ema = 16.7;
