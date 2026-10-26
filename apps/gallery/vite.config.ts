@@ -6,6 +6,9 @@ const page = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 // One HTML entry per effect, so every effect has a real URL (/glitch/, /nebula/)
 // and the deployed site needs no SPA fallback.
 export default defineConfig({
+  // Reachable over the tailnet (tailscale serve) from other devices.
+  server: { allowedHosts: ['.ts.net'] },
+  preview: { allowedHosts: ['.ts.net'] },
   build: {
     outDir: '../../dist',
     emptyOutDir: true,
