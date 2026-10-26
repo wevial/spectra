@@ -1,7 +1,7 @@
 {
   "name": "@spectra/glitch",
   "version": "0.1.0",
-  "description": "A cursor that tears the picture into sliding pixel blocks with an RGB split, over a procedural retro rainbow still life.",
+  "description": "A cursor that tears the picture into sliding pixel blocks with an RGB split, over a procedural retro rainbow still life. Adapted from the signup section of macroscope.com.",
   "type": "module",
   "license": "MIT",
   "exports": "./src/index.ts",

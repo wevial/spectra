@@ -5,6 +5,10 @@ path with an RGB split, then settle back. Underneath is a procedural retro
 still life: a prism light leak, a thin-film bubble, a monitor of scrolling
 code, film grain, and a drifting headline.
 
+**Credit:** adapted from the signup section at the bottom of
+[macroscope.com](https://macroscope.com/), which is built with
+[Unicorn Studio](https://www.unicorn.studio/)'s pixel-trail mouse effect.
+
 ```js
 import { mount } from '@spectra/glitch';
 
@@ -25,8 +29,9 @@ Three passes per frame (`src/shaders.ts`):
 | `SCENE` | The backdrop and the headline. The headline is one row drawn with Canvas 2D, tiled and drifting, overlay-blended in black so bright areas glow through. |
 | `COMPOSITE` | Reads the trail through a block grid, so whole blocks of the scene shift together (stair-stepped edges instead of a smear), splits RGB along the motion, then adds vignette and film grain. |
 
-The trail and block math follow macroscope.com's signup section. Its rainbow
-look comes from a baked image; this one is generated in the shader.
+The trail and block math are adapted from Macroscope's scene (see Credit
+above). Their rainbow look comes from a baked image; this one is generated in
+the shader.
 
 Requires WebGL2 + `EXT_color_buffer_float`; otherwise the container gets the
 `glitch-fallback` class. Mouse only. With `prefers-reduced-motion`, the

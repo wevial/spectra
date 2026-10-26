@@ -6,7 +6,7 @@ WebGL2 cursor effects and image filters, plus a gallery for testing them.
 
 | Effect | |
 |---|---|
-| [`cursors/glitch`](cursors/glitch) | Pixel-block tearing with an RGB split over a retro rainbow still life |
+| [`cursors/glitch`](cursors/glitch) | Pixel-block tearing with an RGB split over a retro rainbow still life. Adapted from [macroscope.com](https://macroscope.com/) |
 | [`cursors/nebula`](cursors/nebula) | A fluid-sim nebula you part with the mouse; it always heals back |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`

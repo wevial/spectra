@@ -2,6 +2,9 @@
 // slide along your path with an RGB split, then settle back. Underneath is a
 // procedural retro still life (rainbow light leak, thin-film bubble, film
 // grain) with a drifting headline whose hard edges make the tearing read.
+//
+// Adapted from the signup section of macroscope.com (built with Unicorn
+// Studio's pixel-trail mouse effect).
 
 import { Program, VERTEX, createFBO, createDoubleFBO, makeBlit, createStage } from '@spectra/core';
 import type { FBO, DoubleFBO } from '@spectra/core';
