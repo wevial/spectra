@@ -8,6 +8,7 @@ WebGL2 cursor effects and image filters, plus a gallery for testing them.
 |---|---|
 | [`cursors/glitch`](cursors/glitch) | Pixel-block tearing with an RGB split over a retro rainbow still life. Adapted from [macroscope.com](https://macroscope.com/) |
 | [`cursors/dither`](cursors/dither) | A ringed planet in Bayer dither, lit from the cursor; the trail adds light and chunky pixels |
+| [`cursors/blackhole`](cursors/blackhole) | Drag a black hole across a starfield: ray-marched lensing, photon ring, lensed accretion disk |
 | [`cursors/nebula`](cursors/nebula) | A fluid-sim nebula you part with the mouse; it always heals back |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`

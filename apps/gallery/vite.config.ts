@@ -17,6 +17,7 @@ export default defineConfig({
         home: page('index.html'),
         glitch: page('glitch/index.html'),
         dither: page('dither/index.html'),
+        blackhole: page('blackhole/index.html'),
         nebula: page('nebula/index.html'),
       },
     },

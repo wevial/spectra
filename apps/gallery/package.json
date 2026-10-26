@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@spectra/core": "workspace:*",
+    "@spectra/blackhole": "workspace:*",
     "@spectra/dither": "workspace:*",
     "@spectra/glitch": "workspace:*",
     "@spectra/nebula": "workspace:*",

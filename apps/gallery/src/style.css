@@ -87,6 +87,12 @@ body {
     radial-gradient(130% 100% at 50% 80%, rgba(64, 158, 255, 0.28), transparent 65%),
     #050113;
 }
+.blackhole-fallback {
+  background:
+    radial-gradient(circle at 50% 50%, #000 9%, #ffd9a0 10%, #ff7a2a 12%, transparent 18%),
+    radial-gradient(60% 40% at 30% 30%, rgba(120, 50, 160, 0.35), transparent),
+    #030208;
+}
 .dither-fallback {
   background:
     radial-gradient(circle at 42% 42%, #ffe8a3, #ff6b4a 30%, #5c1d5e 52%, transparent 54%),

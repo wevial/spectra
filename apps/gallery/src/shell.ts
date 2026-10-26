@@ -1,13 +1,15 @@
 import GUI from 'lil-gui';
 
-export const EFFECTS = ['glitch', 'dither', 'nebula'] as const;
+export const EFFECTS = ['glitch', 'dither', 'blackhole', 'nebula'] as const;
+
+const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole' };
 
 export function renderNav() {
   const nav = document.querySelector<HTMLElement>('.nav')!;
   const current = nav.dataset.current;
   nav.innerHTML = [
     `<a class="brand" href="/"${current === 'home' ? ' aria-current="page"' : ''}>spectra</a>`,
-    ...EFFECTS.map((e) => `<a href="/${e}/"${e === current ? ' aria-current="page"' : ''}>${e}</a>`),
+    ...EFFECTS.map((e) => `<a href="/${e}/"${e === current ? ' aria-current="page"' : ''}>${LABELS[e] ?? e}</a>`),
   ].join('');
 }
 

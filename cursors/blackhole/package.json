@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/blackhole",
+  "version": "0.1.0",
+  "description": "Drag a black hole across a starfield: ray-marched lensing, a photon ring, and an accretion disk lensed over and under the shadow.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}
