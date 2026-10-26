@@ -6,9 +6,9 @@
 // Adapted from the signup section of macroscope.com (built with Unicorn
 // Studio's pixel-trail mouse effect).
 
-import { Program, VERTEX, createFBO, createDoubleFBO, makeBlit, createStage } from '@spectra/core';
-import type { FBO, DoubleFBO } from '@spectra/core';
-import { TRAIL, SCENE, COMPOSITE } from './shaders';
+import { Program, VERTEX, Trail, createFBO, makeBlit, createStage } from '@spectra/core';
+import type { FBO } from '@spectra/core';
+import { SCENE, COMPOSITE } from './shaders';
 
 export const DEFAULTS = {
   text: 'spectra',
@@ -52,7 +52,7 @@ export interface GlitchHandle {
 export function mount(container: HTMLElement, opts: Partial<GlitchConfig> = {}): GlitchHandle {
   const config: GlitchConfig = { ...DEFAULTS, ...opts };
 
-  let trail: DoubleFBO | null = null;
+  let trail: Trail | null = null;
   let scene: FBO | null = null;
   const stage = createStage(container, { floatTargets: true, onResize: () => allocate() });
   if (!stage) {
@@ -62,7 +62,6 @@ export function mount(container: HTMLElement, opts: Partial<GlitchConfig> = {}):
   const { gl, pointer, reducedMotion } = stage;
 
   const programs = {
-    trail: new Program(gl, VERTEX, TRAIL),
     scene: new Program(gl, VERTEX, SCENE),
     composite: new Program(gl, VERTEX, COMPOSITE),
   };
@@ -110,10 +109,10 @@ export function mount(container: HTMLElement, opts: Partial<GlitchConfig> = {}):
   function allocate() {
     const w = gl.drawingBufferWidth;
     const h = gl.drawingBufferHeight;
-    trail?.dispose();
     scene?.dispose();
     // The trail is low-frequency and read through a block grid anyway.
-    trail = createDoubleFBO(gl, Math.ceil(w / 2), Math.ceil(h / 2), gl.RG16F, gl.RG, gl.HALF_FLOAT, gl.LINEAR);
+    if (trail) trail.resize();
+    else trail = new Trail(gl, blit, 0.5);
     scene = createFBO(gl, w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
     textKey = '';
   }
@@ -133,19 +132,7 @@ export function mount(container: HTMLElement, opts: Partial<GlitchConfig> = {}):
 
     gl.disable(gl.BLEND);
 
-    // Trail: decay to 5% over `fade` seconds, paint the swept segment.
-    const t = programs.trail;
-    t.use();
-    gl.uniform1i(t.uniforms.uTrail, trail.read.attach(0));
-    const moved = pointer.active ? 1 : 0;
-    gl.uniform2f(t.uniforms.uPrev, pointer.x - pointer.dx * moved, pointer.y - pointer.dy * moved);
-    gl.uniform2f(t.uniforms.uCur, pointer.x, pointer.y);
-    gl.uniform1f(t.uniforms.uAspect, aspect);
-    gl.uniform1f(t.uniforms.uRadius, config.radius);
-    gl.uniform1f(t.uniforms.uDecay, Math.pow(0.05, dt / Math.max(config.fade, 0.01)));
-    gl.uniform1f(t.uniforms.uTime, time);
-    blit(trail.write);
-    trail.swap();
+    trail.update(pointer, dt, time, config);
 
     const s = programs.scene;
     s.use();
@@ -164,7 +151,7 @@ export function mount(container: HTMLElement, opts: Partial<GlitchConfig> = {}):
     const c = programs.composite;
     c.use();
     gl.uniform1i(c.uniforms.uScene, scene.attach(0));
-    gl.uniform1i(c.uniforms.uTrail, trail.read.attach(1));
+    gl.uniform1i(c.uniforms.uTrail, trail.texture.attach(1));
     gl.uniform2f(c.uniforms.uRes, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.uniform1f(c.uniforms.uBlock, config.block);
     gl.uniform1f(c.uniforms.uStrength, config.strength);

@@ -1,71 +1,10 @@
-// GLSL for the glitch cursor. Three passes per frame:
-//   TRAIL     — ping-pong field of cursor motion (direction * strength), decaying
+import { NOISE } from '@spectra/core';
+
+// GLSL for the glitch cursor. After the shared cursor trail (@spectra/core):
 //   SCENE     — procedural retro still life: dark room, rainbow light leak,
 //               thin-film bubble, and a drifting tiled headline
 //   COMPOSITE — scene sampled through the pixelated trail (blocky displacement
 //               + RGB split), then film grain and vignette in screen space
-
-const HASH = /* glsl */ `
-float hash12(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-vec3 hash32(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
-  p3 += dot(p3, p3.yxz + 33.33);
-  return fract((p3.xxy + p3.yzz) * p3.zyx);
-}
-float vnoise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash12(i), hash12(i + vec2(1, 0)), u.x),
-             mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), u.x), u.y);
-}
-float fbm(vec2 p) {
-  float v = 0.0, amp = 0.5;
-  mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-  for (int i = 0; i < 4; i++) { v += amp * vnoise(p); p = rot * p * 2.03; amp *= 0.5; }
-  return v;
-}
-`;
-
-// Cursor trail. Each frame the previous field decays and the segment the mouse
-// swept since last frame is painted in as its unit direction, weighted by speed
-// and a soft brush. A faint wobble on the read keeps the trail from looking
-// like a rigid stamp as it fades.
-export const TRAIL = /* glsl */ `#version 300 es
-precision highp float;
-in vec2 vUv;
-uniform sampler2D uTrail;
-uniform vec2 uPrev;
-uniform vec2 uCur;
-uniform float uAspect;
-uniform float uRadius;
-uniform float uDecay;
-uniform float uTime;
-out vec4 fragColor;
-
-void main() {
-  vec2 wobble = vec2(sin(vUv.y * 31.0 + uTime * 1.3), cos(vUv.x * 27.0 + uTime * 1.1)) * 0.0012;
-  vec2 prev = texture(uTrail, vUv + wobble).xy * uDecay;
-
-  vec2 k = vec2(uAspect, 1.0);
-  vec2 p = vUv * k, a = uPrev * k, b = uCur * k;
-  vec2 ab = b - a;
-  float len = length(ab);
-  float t = len > 0.0 ? clamp(dot(p - a, ab) / (len * len), 0.0, 1.0) : 0.0;
-  float dist = distance(p, a + ab * t);
-
-  float s = smoothstep(uRadius, uRadius * 0.21, dist);
-  s *= s;
-  float intensity = min(0.7, len * 10.0) * s * 0.4;
-  vec2 dir = len > 0.0 ? ab / len : vec2(0.0);
-
-  fragColor = vec4(mix(prev, dir, intensity), 0.0, 1.0);
-}
-`;
 
 export const SCENE = /* glsl */ `#version 300 es
 precision highp float;
@@ -79,7 +18,7 @@ uniform float uTextAmt;   // headline opacity
 uniform float uHue;       // spectrum rotation
 uniform float uLeak;      // light-leak intensity
 out vec4 fragColor;
-${HASH}
+${NOISE}
 
 const float TAU = 6.2831853;
 
@@ -199,7 +138,7 @@ uniform float uGrain;
 uniform float uFringe;    // static lens fringe toward the edges
 uniform float uTime;
 out vec4 fragColor;
-${HASH}
+${NOISE}
 
 // Snap the trail lookup to a block grid so whole blocks of the scene shift
 // together — that is what makes edges stair-step instead of smear.
