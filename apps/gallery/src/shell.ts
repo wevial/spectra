@@ -35,3 +35,34 @@ export function panel(build: (gui: GUI) => void) {
   if (matchMedia('(max-width: 640px)').matches) gui.close();
   return gui;
 }
+
+/**
+ * Feeds an effect any image or video, from a file picker or dropped on the
+ * page. Files stay local (object URLs). Returns `pick()` to open the picker.
+ */
+export function sourcePicker(setSource: (src: string | HTMLVideoElement) => Promise<void>) {
+  let objectUrl = '';
+  async function useFile(file: File | undefined) {
+    if (!file) return;
+    URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    if (file.type.startsWith('video/')) {
+      const video = Object.assign(document.createElement('video'), {
+        src: objectUrl, muted: true, loop: true, playsInline: true,
+      });
+      await video.play();
+      await setSource(video);
+    } else {
+      await setSource(objectUrl);
+    }
+  }
+
+  const input = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*,video/*' });
+  input.addEventListener('change', () => void useFile(input.files?.[0]));
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    void useFile(e.dataTransfer?.files[0]);
+  });
+  return { pick: () => input.click() };
+}

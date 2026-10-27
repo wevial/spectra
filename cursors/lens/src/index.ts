@@ -4,11 +4,12 @@
 // ring, and inside the ring you see a small mirrored image. Hold the mouse
 // button to add mass.
 
-import { Program, VERTEX, makeBlit, createStage } from '@spectra/core';
+import { Program, VERTEX, makeBlit, createStage, SourceTexture } from '@spectra/core';
+import type { Source } from '@spectra/core';
 import { LENS } from './shaders';
 import { drawPoster } from './poster';
 
-export type LensSource = string | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap;
+export type LensSource = Source;
 
 export const DEFAULTS = {
   /** Einstein radius, fraction of height. */
@@ -56,62 +57,14 @@ export function mount(
   const blit = makeBlit(gl);
   const program = new Program(gl, VERTEX, LENS);
 
-  const tex = gl.createTexture()!;
+  // Rays from inside the ring reach far outside the frame; mirror so they
+  // still land on content.
+  const content = new SourceTexture(gl, gl.MIRRORED_REPEAT);
   const posterCanvas = document.createElement('canvas');
-  let source: Exclude<LensSource, string> | null = null; // null = poster
-  let size = { w: 1, h: 1 };
-
-  function upload(el: TexImageSource, w: number, h: number) {
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, el);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    // Mipmaps: the lens squeezes content hard near the ring.
-    gl.generateMipmap(gl.TEXTURE_2D);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    // Rays from inside the ring reach far outside the frame; mirror so they
-    // still land on content.
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
-    size = { w, h };
-  }
-
-  function drawPosterNow() {
-    drawPoster(posterCanvas, gl.drawingBufferWidth, gl.drawingBufferHeight, config.font);
-    upload(posterCanvas, posterCanvas.width, posterCanvas.height);
-    posterDirty = false;
-  }
-
-  function dims(el: Exclude<LensSource, string>) {
-    if (el instanceof HTMLVideoElement) return { w: el.videoWidth, h: el.videoHeight };
-    if (el instanceof HTMLImageElement) return { w: el.naturalWidth, h: el.naturalHeight };
-    return { w: el.width, h: el.height };
-  }
 
   async function setSource(next: LensSource | null) {
-    if (next == null) {
-      source = null;
-      posterDirty = true;
-      return;
-    }
-    let el: Exclude<LensSource, string>;
-    if (typeof next === 'string') {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = next;
-      await img.decode();
-      el = img;
-    } else {
-      el = next;
-      if (el instanceof HTMLImageElement && !el.complete) await el.decode();
-    }
-    source = el;
-    if (!(el instanceof HTMLVideoElement)) {
-      const d = dims(el);
-      upload(el, d.w, d.h);
-    }
+    await content.set(next);
+    if (next == null) posterDirty = true;
   }
   if (initial) void setSource(initial);
   // Redraw the poster once the web font arrives (first draw may use a fallback).
@@ -133,10 +86,14 @@ export function mount(
   stage.start((dt) => {
     if (!reducedMotion.matches) time += dt;
 
-    if (source === null) {
-      if (posterDirty) drawPosterNow();
-    } else if (source instanceof HTMLVideoElement && source.readyState >= 2) {
-      upload(source, source.videoWidth, source.videoHeight);
+    if (content.source === null) {
+      if (posterDirty) {
+        drawPoster(posterCanvas, gl.drawingBufferWidth, gl.drawingBufferHeight, config.font);
+        content.upload(posterCanvas, posterCanvas.width, posterCanvas.height);
+        posterDirty = false;
+      }
+    } else {
+      content.tick();
     }
 
     // When the cursor leaves, the lens stays put, then over `idle` seconds
@@ -160,18 +117,11 @@ export function mount(
     const targetMass = config.mass * (pressed ? config.press : 1);
     lens.mass += (targetMass - lens.mass) * (1 - Math.exp(-dt * 5));
 
-    // Cover: fill the stage, crop the longer side of the content.
-    const sa = gl.drawingBufferWidth / gl.drawingBufferHeight;
-    const ca = size.w / Math.max(size.h, 1);
-    const fit = sa > ca
-      ? [1, ca / sa, 0, 0.5 - 0.5 * (ca / sa)]
-      : [sa / ca, 1, 0.5 - 0.5 * (sa / ca), 0];
+    const fit = content.cover(gl.drawingBufferWidth, gl.drawingBufferHeight);
 
     program.use();
     const u = program.uniforms;
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.uniform1i(u.uSource, 0);
+    gl.uniform1i(u.uSource, content.attach(0));
     gl.uniform2f(u.uRes, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.uniform2f(u.uLens, lens.x, lens.y);
     gl.uniform1f(u.uMass, lens.mass);
