@@ -1,8 +1,10 @@
 export const MAX_DROPS = 128;
 /** Points along the wet streak a moving drop leaves (ids after the drops). */
-export const MAX_TRAIL = 64;
+export const MAX_TRAIL = 256;
 /** Drops and streak segments listed per screen tile; the smallest drops are dropped past this. */
-export const BIN = 12;
+export const BIN = 16;
+/** Marks the end of a tile's list. */
+export const BIN_END = 65535;
 
 // A phone screen with water on it. The panel is a grid of emitters (RGB
 // stripes, or a diamond pentile), far too fine to see until a drop sits on
@@ -15,8 +17,9 @@ export const BIN = 12;
 // water's (exaggerated) dispersion, so rims fringe into rainbows.
 //
 // Every drop sits on the same glass, so the optics depend on its size: the
-// big one under the cursor magnifies cleanly, smaller drops overshoot focus
-// and show an inverted image, and tiny ones shrink the panel to a pale blur.
+// big one under the cursor magnifies `magnify`× at its apex, smaller drops
+// overshoot focus and show an inverted image, and tiny ones shrink the panel
+// to a pale blur.
 // Where subpixels are too fine to resolve, they beat against a virtual camera
 // sensor into the soft rainbow moiré of macro photos (see beat()).
 export const DROPLET = /* glsl */ `#version 300 es
@@ -30,14 +33,13 @@ uniform float uAspect;
 uniform float uPx;          // panel pixels per height unit
 uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, flatness×10 + shape seed
 uniform float uGlass;       // cover glass thickness, height units
-uniform vec4 uTrail[${MAX_TRAIL}]; // streak points: center, half-width (negative: a new streak starts here), pinch 0..1
+uniform highp sampler2D uStreak; // streak points (one texel each): center, half-width (negative: a new streak starts here)
 uniform highp usampler2D uBins; // per tile, the drops that reach it (255: end of list)
 uniform vec2 uTiles;
 uniform vec2 uDir;          // drop 0 (the cursor's) heading, and how far it's stretched
 uniform float uStretch;
 uniform vec2 uContact;      // sin, cos of the contact angle
 uniform vec3 uIor;          // refractive index per channel
-uniform float uMagnify;     // drop 0's magnification
 uniform int uLayout;        // 0 RGB stripe, 1 diamond pentile
 uniform float uSensor;      // camera sensor pitch, device px
 uniform float uGrid;
@@ -192,30 +194,28 @@ void main() {
   vec2 grad = vec2(0.0);
   float peak = 0.0, a = 1.0;      // blended dome height and radius
   vec2 center = p;
-  float own = 0.0;                // how much of the surface is the cursor's drop
-  vec2 o0 = vec2(0.0);
-  float rho0 = 2.0;
   vec3 shine = vec3(0.0);
   ivec2 tile = ivec2(min(vUv * uTiles, uTiles - 1.0));
   for (int j = 0; j < ${BIN}; j++) {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
-    if (id == 255u) break;
+    if (id == ${BIN_END}u) break;
     int i = int(id);
     float H, hi;
     vec2 g, c;
     float r;
     if (i >= ${MAX_DROPS}) {
-      // A segment of the wet streak: a low ridge along the drop's path. As it
-      // ages it pinches between its points, the way a rivulet beads up.
-      vec4 A = uTrail[i - ${MAX_DROPS}], B = uTrail[i - ${MAX_DROPS} + 1];
+      // A segment of the wet streak: a low ridge along the drop's path. Its
+      // width is interpolated by area, so where a point has pinched to
+      // nothing the pieces either side end in rounded tips.
+      int k = i - ${MAX_DROPS};
+      vec4 A = texelFetch(uStreak, ivec2(k, 0), 0), B = texelFetch(uStreak, ivec2(k + 1, 0), 0);
       vec2 ab = B.xy - A.xy;
       float t = clamp(dot(p - A.xy, ab) / max(dot(ab, ab), 1e-10), 0.0, 1.0);
       c = A.xy + ab * t;
       vec2 o = p - c;
-      float pinch = sin(3.14159265 * t);
-      r = mix(abs(A.z), abs(B.z), t) * (1.0 - 0.75 * mix(A.w, B.w, t) * pinch * pinch);
-      if (dot(o, o) >= 1.44 * r * r) continue;
-      H = r * z0 * 0.7;
+      r = sqrt(mix(A.z * A.z, B.z * B.z, t));
+      if (r < 1e-5 || dot(o, o) >= 1.44 * r * r) continue;
+      H = r * z0 * 0.5;
       hi = H * (1.0 - dot(o, o) / (r * r));
       g = -2.0 * H * o / (r * r);
     } else {
@@ -224,7 +224,9 @@ void main() {
       float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
       if (dot(o, o) >= reach * reach) continue;
       shine += glint(p, d);
-      H = d.z * z0 * floor(d.w) / 10.0;
+      // The cursor's drop piles up taller as it takes on water, keeping the
+      // curvature at its apex (so its magnification) as it grows.
+      H = i == 0 ? d.z * d.z / uSize * z0 : d.z * z0 * floor(d.w) / 10.0;
       c = d.xy;
       r = d.z;
       if (i == 0) {
@@ -236,8 +238,6 @@ void main() {
         hi = H * (1.0 - dot(q, q));
         vec2 gf = -2.0 * H * q * J / d.z;
         g = gf.x * uDir + gf.y * perp;
-        o0 = o;
-        rho0 = length(q);
       } else {
         // Drops pin to the glass unevenly, so bigger ones aren't quite round.
         float seed = fract(d.w) * 97.0;
@@ -249,7 +249,7 @@ void main() {
       }
     }
     if (h < -1e2) {
-      h = hi; grad = g; peak = H; a = r; center = c; own = float(i == 0);
+      h = hi; grad = g; peak = H; a = r; center = c;
     } else {
       // Smooth max, softened in proportion to the smaller dome, so drops
       // only fuse once they touch.
@@ -260,7 +260,6 @@ void main() {
       peak = max(peak, H);
       a = mix(a, r, m);
       center = mix(center, c, m);
-      own = mix(own, float(i == 0), m);
     }
   }
   vec3 N = normalize(vec3(-grad, 1.0));
@@ -272,17 +271,6 @@ void main() {
   // Landing points per channel. Derivatives are taken here, outside any
   // branch (off the water, N is flat and every channel lands straight down).
   vec2 lr = land(N, uIor.r, D), lg = land(N, uIor.g, D), lb = land(N, uIor.b, D);
-  if (own > 0.0) {
-    // The cursor's drop is an idealized magnifier: even magnification
-    // across the middle, easing back to 1× at the rim, where the panel
-    // compresses and the colors split.
-    float t = smoothstep(0.6, 1.0, rho0);
-    vec2 ideal = -o0 * (1.0 - 1.0 / uMagnify) * (1.0 - t * t);
-    float split = 9.0 * t * t;
-    lg = mix(lg, ideal, own);
-    lr = mix(lr, ideal * (1.0 + ((uIor.r - 1.0) / (uIor.g - 1.0) - 1.0) * split), own);
-    lb = mix(lb, ideal * (1.0 + ((uIor.b - 1.0) / (uIor.g - 1.0) - 1.0) * split), own);
-  }
   vec2 s = p * uPx;
   vec2 sg = (p + lg) * uPx;
   float f0 = max(length(dFdx(s)), length(dFdy(s)));

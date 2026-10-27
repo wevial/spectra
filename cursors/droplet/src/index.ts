@@ -7,7 +7,7 @@
 
 import { Program, VERTEX, makeBlit, createStage, SourceTexture } from '@spectra/core';
 import type { Source } from '@spectra/core';
-import { DROPLET, MAX_DROPS, MAX_TRAIL, BIN } from './shaders';
+import { DROPLET, MAX_DROPS, MAX_TRAIL, BIN, BIN_END } from './shaders';
 import { drawPoster } from './poster';
 
 export type DropletSource = Source;
@@ -74,15 +74,17 @@ interface Drop {
 interface StreakPoint {
   x: number;    // uv
   y: number;
-  w: number;    // half-width, fraction of height
+  w: number;    // half-width when fresh, fraction of height
   age: number;
   cut: boolean; // a new streak starts here
+  neck: number; // 0..1: how fully the streak pinches off here as it breaks up
 }
 
 const WATER = 1.333;
-/** Seconds before a streak starts to pinch, and when it has broken into beads. */
-const PINCH_FROM = 1.2;
-const BEAD_AT = 2.6;
+/** A streak stays whole, then pinches off at its necks, then dries: seconds. */
+const STREAK_PINCH_FROM = 4;
+const STREAK_PINCH_TO = 8;
+const STREAK_LIFE = 14;
 const TILE_ROWS = 12;
 
 /**
@@ -173,7 +175,13 @@ export function mount(
   let rainDue = 0;
   let streak: StreakPoint[] = [];
   let sinceStreak = Infinity;
-  const streakUniforms = new Float32Array(MAX_TRAIL * 4);
+  let streakLength = 0; // arc length so far, height units: varies the width along it
+  const streakData = new Float32Array(MAX_TRAIL * 4);
+  const streakTex = gl.createTexture()!;
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, streakTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   const anchor = { x: 0.5, y: 0.5 };
   const uniforms = new Float32Array(MAX_DROPS * 4);
 
@@ -183,7 +191,7 @@ export function mount(
   gl.bindTexture(gl.TEXTURE_2D, binTex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  let bins = new Uint8Array(0);
+  let bins = new Uint16Array(0);
 
   stage.start((dt) => {
     const still = reducedMotion.matches;
@@ -304,23 +312,26 @@ export function mount(
     rc = radius();
 
     // A moving drop leaves a wet streak along its path, like rain running
-    // down a window. After a moment it pinches between its points and breaks
-    // into a chain of beads, which evaporate slowly.
+    // down a window. It stays whole for a while, thinning as it dries, then
+    // pinches off at a few uneven necks into elongated pieces that dry up.
     sinceStreak += dt;
     for (const s of streak) s.age += dt;
-    const head = streak[streak.length - 1];
-    if (drop.speed > 0.08 && !still && (!head || dist(head.x, head.y, drop.x, drop.y) > rc * 0.22)) {
-      streak.push({ x: drop.x, y: drop.y, w: rc * 0.16 * (0.85 + 0.3 * Math.random()), age: 0, cut: !head || sinceStreak > 0.5 });
-      sinceStreak = 0;
-    }
-    while (streak.length && (streak[0].age > BEAD_AT || streak.length > MAX_TRAIL - 1)) {
-      const s = streak.shift()!;
-      // Beads come out uneven: some necks drain into a neighbour instead.
-      if (Math.random() < 0.75) {
-        const j = s.w * 0.3;
-        deposit(s.x + ((Math.random() - 0.5) * j) / a, s.y + (Math.random() - 0.5) * j, s.w * (0.5 + 0.55 * Math.random()), 12 + Math.random() * 18, 0.7);
-      }
+    while (streak.length && streak[0].age > STREAK_LIFE) {
+      streak.shift();
       if (streak.length) streak[0].cut = true;
+    }
+    const head = streak[streak.length - 1];
+    const step = head ? dist(head.x, head.y, drop.x, drop.y) : 0;
+    if (drop.speed > 0.08 && !still && (!head || step > rc * 0.25)) {
+      const cut = !head || sinceStreak > 0.5;
+      streakLength += cut ? 1 : step;
+      const wave = 0.85 + 0.15 * Math.sin(streakLength * 37) + 0.08 * Math.sin(streakLength * 91 + 2);
+      streak.push({ x: drop.x, y: drop.y, w: rc * 0.2 * wave, age: 0, cut, neck: Math.random() < 0.3 ? 1 : 0.2 * Math.random() });
+      if (streak.length > MAX_TRAIL - 1) {
+        streak.shift();
+        streak[0].cut = true;
+      }
+      sinceStreak = 0;
     }
 
     // Swallowed water sheds behind it as bigger drops; harder when overfull.
@@ -373,8 +384,8 @@ export function mount(
     sized.forEach(({ d, r }, i) => uniforms.set([d.x * a, d.y, r, Math.round(d.flat * 10) + Math.min(d.seed, 0.999)], (i + 1) * 4));
 
     const cols = Math.max(1, Math.round(TILE_ROWS * a)), rows = TILE_ROWS;
-    if (bins.length !== cols * rows * BIN) bins = new Uint8Array(cols * rows * BIN);
-    bins.fill(255);
+    if (bins.length !== cols * rows * BIN) bins = new Uint16Array(cols * rows * BIN);
+    bins.fill(BIN_END);
     const fill = new Uint8Array(cols * rows);
     const bin = (id: number, x: number, y: number, reach: number) => {
       const x0 = Math.max(Math.floor((x - reach / a) * cols), 0), x1 = Math.min(Math.floor((x + reach / a) * cols), cols - 1);
@@ -387,24 +398,38 @@ export function mount(
       }
     };
     bin(0, drop.x, drop.y, rc * (1 + sway) * (2 + 2 * Math.abs(drop.stretch)));
-    // The streak, ending at the drop while it's still running.
-    const points = sinceStreak < 0.5 && streak.length ? [...streak, { x: drop.x, y: drop.y, w: streak[streak.length - 1].w, age: 0, cut: false }] : streak;
-    points.forEach((s, i) => {
-      const pinch = Math.min(Math.max((s.age - PINCH_FROM) / (BEAD_AT - PINCH_FROM), 0), 1);
-      const w = s.w * (1 - 0.2 * pinch);
-      streakUniforms.set([s.x * a, s.y, s.cut ? -w : w, pinch * pinch * (3 - 2 * pinch)], i * 4);
+    // The streak, ending at the drop while it's still running. Near capacity
+    // its oldest end tapers off rather than vanishing.
+    const live = sinceStreak < 0.5 && streak.length;
+    const points = live ? [...streak, { ...streak[streak.length - 1], x: drop.x, y: drop.y, age: 0, cut: false }] : streak;
+    const crowded = points.length > MAX_TRAIL * 0.8;
+    const widths = points.map((s, i) => {
+      const smooth = (e0: number, e1: number, x: number) => {
+        const u = Math.min(Math.max((x - e0) / (e1 - e0), 0), 1);
+        return u * u * (3 - 2 * u);
+      };
+      const dry = s.age < STREAK_PINCH_TO
+        ? 1 - 0.3 * s.age / STREAK_PINCH_TO
+        : 0.7 * (1 - smooth(STREAK_PINCH_TO, STREAK_LIFE, s.age));
+      const pinch = smooth(STREAK_PINCH_FROM, STREAK_PINCH_TO, s.age) * s.neck;
+      const taper = crowded ? Math.min(1, (i + 1) / 8) : 1;
+      return s.w * dry * (1 - pinch) * taper;
     });
+    points.forEach((s, i) => streakData.set([s.x * a, s.y, widths[i], 0], i * 4));
     for (let i = 0; i + 1 < points.length; i++) {
       const s = points[i], e = points[i + 1];
-      if (e.cut) continue;
-      const half = dist(s.x, s.y, e.x, e.y) / 2 + Math.max(s.w, e.w) * 1.2;
-      bin(MAX_DROPS + i, (s.x + e.x) / 2, (s.y + e.y) / 2, half);
+      const reach = Math.max(widths[i], widths[i + 1]) * 1.2;
+      if (e.cut || reach <= 0) continue;
+      bin(MAX_DROPS + i, (s.x + e.x) / 2, (s.y + e.y) / 2, dist(s.x, s.y, e.x, e.y) / 2 + reach);
     }
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, streakTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, MAX_TRAIL, 1, 0, gl.RGBA, gl.FLOAT, streakData);
     sized.forEach(({ d, r }, i) => bin(i + 1, d.x, d.y, r * 1.5)); // glints spill past the rim
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, binTex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, cols * BIN, rows, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, bins);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16UI, cols * BIN, rows, 0, gl.RED_INTEGER, gl.UNSIGNED_SHORT, bins);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 
     const fit = content.cover(pw, ph);
@@ -423,13 +448,12 @@ export function mount(
     gl.uniform4fv(u['uDrops[0]'], uniforms);
     gl.uniform1i(u.uBins, 1);
     gl.uniform1f(u.uGlass, glass);
-    gl.uniform4fv(u['uTrail[0]'], streakUniforms);
+    gl.uniform1i(u.uStreak, 2);
     gl.uniform2f(u.uTiles, cols, rows);
     gl.uniform2f(u.uDir, drop.dirX, drop.dirY);
     gl.uniform1f(u.uStretch, drop.stretch);
     gl.uniform2f(u.uContact, Math.sin(phi), Math.cos(phi));
     gl.uniform3f(u.uIor, WATER - spread, WATER, WATER + spread * 1.4);
-    gl.uniform1f(u.uMagnify, Math.max(config.magnify, 1));
     gl.uniform1i(u.uLayout, LAYOUTS[config.layout] ?? 0);
     gl.uniform1f(u.uSensor, config.sensor * (gl.drawingBufferWidth / Math.max(canvas.clientWidth, 1)));
     gl.uniform1f(u.uGrid, config.grid);

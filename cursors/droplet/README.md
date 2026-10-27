@@ -6,10 +6,11 @@ with smaller drops that swirl with moiré rainbows or show the screen upside
 down. Drops that touch coalesce: a neck forms, the smaller drains into the
 bigger over a second or so, and the blob leans toward it before rounding
 out; pull away first and they separate. As it moves it leaves a wet streak,
-like rain running down a window, that pinches into a chain of uneven beads,
-plus bigger drops while it carries swallowed water. It wobbles when it
-stops. Click to flick a spray of
-new drops. Shows any image, canvas or video, or a lock screen by default.
+like rain running down a window: it stays whole for a few seconds, thins
+as it dries, then pinches off unevenly into a few elongated pieces. While
+it carries swallowed water it also sheds bigger drops. It wobbles when it
+stops. Click to flick a spray of new drops. Shows any image, canvas or
+video, or a lock screen by default.
 
 ```js
 import { mount } from '@spectra/droplet';
@@ -31,14 +32,15 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
 - **Water.** One surface over cover glass above the pixels. Each drop is a
   low dome with a slightly lumpy, pinned outline, and neighbours blend through
   a smooth max sized to the smaller dome, so drops fuse only once they touch.
-  The streak is a ridge along the drop's path in the same surface, narrowing
-  between its points as it ages until it is turned into beads.
-  Each dome is a plano-convex lens. View rays refract at its surface and land on the panel,
-  traced per channel with exaggerated dispersion. The glass thickness is set
-  so the cursor's drop magnifies `magnify`×. Smaller drops on the same glass
-  overshoot focus, so they invert and shrink the image. The cursor's drop
-  uses an idealized magnifier instead: even magnification across the middle,
-  compressing at the rim, where the colors split.
+  The streak is a ridge along the drop's path in the same surface, its
+  points kept in a small float texture; as it ages, a few of them pinch to
+  nothing and the pieces between end in rounded tips.
+- **Optics.** Each dome is a plano-convex lens. View rays refract at its
+  surface and land on the panel, traced per channel with exaggerated
+  dispersion. The glass thickness is set so the cursor's drop magnifies
+  `magnify`× at its apex; it piles up taller as it takes on water, so it
+  keeps that. Smaller drops on the same glass overshoot focus, so they
+  invert and shrink the image.
 - **Moiré.** Subpixels too fine to resolve alias against a virtual camera
   sensor (`sensor` CSS px). The stripe pattern's fundamental shows up at
   the frequency left after removing whole cycles per sensor pixel, and its
@@ -50,8 +52,8 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
   lamp and eye, drawn as a hot core with bloom and, on big drops, a twinkling
   four-point star. Every drop sees the lamp from its own angle, so glints
   swing around the drops as you move, and far drops catch it on the rim.
-- **Cost.** Drops are binned into screen tiles (a small integer texture), so
-  each pixel only checks the drops near it.
+- **Cost.** Drops and streak segments are binned into screen tiles (a small
+  integer texture), so each pixel only checks the ones near it.
 
 Requires WebGL2; otherwise the container gets the `droplet-fallback` class.
 Mouse only.
