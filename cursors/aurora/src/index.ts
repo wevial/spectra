@@ -4,7 +4,7 @@
 // behind, over a dark lake and a spruce treeline.
 
 import { Program, VERTEX, Trail, makeBlit, createStage, createFBO } from '@spectra/core';
-import type { FBO } from '@spectra/core';
+import type { FBO, Pointer } from '@spectra/core';
 import { AURORA, COMPOSITE } from './shaders';
 
 /** Three colors: lower curtain, upper curtain, lower-edge fringe. */
@@ -86,11 +86,28 @@ export function mount(container: HTMLElement, opts: Partial<AuroraConfig> = {}):
   };
   resizeAurora();
 
+  // With no cursor (touch, or a preview card) a ghost wanders the sky and
+  // paints, so the curtain never goes dark.
+  const ghost: Pointer = { x: 0.5, y: 0.5, dx: 0, dy: 0, active: false };
+  let idle = 0;
   let time = 0;
 
   stage.start((dt) => {
     if (!reducedMotion.matches) time += dt * config.speed;
-    trail!.update(pointer, dt, time, config);
+    idle = pointer.active ? 0 : idle + dt;
+    if (idle > 1 && !reducedMotion.matches) {
+      const t = time * 0.5;
+      const x = 0.5 + 0.42 * Math.sin(t * 0.61) * Math.cos(t * 0.23);
+      const y = config.horizon + (1 - config.horizon) * (0.32 + 0.14 * Math.sin(t * 0.47 + 1.3));
+      ghost.dx = ghost.active ? x - ghost.x : 0;
+      ghost.dy = ghost.active ? y - ghost.y : 0;
+      ghost.x = x;
+      ghost.y = y;
+      ghost.active = true;
+    } else {
+      ghost.active = false;
+    }
+    trail!.update(ghost.active ? ghost : pointer, dt, time, config);
 
     const colors = (PALETTES[config.palette] ?? PALETTES.boreal).map(hexToRgb);
     const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
