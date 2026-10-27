@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/riso",
+  "version": "0.1.0",
+  "description": "Risograph print of any image: spot-ink separations, grainy halftone and paper; the cursor knocks the ink layers out of register.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

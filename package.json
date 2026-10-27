@@ -7,10 +7,12 @@
     "dev": "bun --filter @spectra/gallery dev",
     "build": "bun --filter @spectra/gallery build",
     "preview": "bun --filter @spectra/gallery preview",
+    "test": "bun test",
     "typecheck": "tsc --noEmit",
     "deploy": "bun run build && wrangler deploy"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.3",
     "typescript": "^5.9.3",
     "wrangler": "^4.40.0"
   }
