@@ -13,6 +13,7 @@
     "@spectra/dither": "workspace:*",
     "@spectra/glitch": "workspace:*",
     "@spectra/lens": "workspace:*",
+    "@spectra/mycelium": "workspace:*",
     "@spectra/nebula": "workspace:*",
     "lil-gui": "^0.20.0"
   },

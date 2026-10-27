@@ -19,6 +19,7 @@ export default defineConfig({
         dither: page('dither/index.html'),
         blackhole: page('blackhole/index.html'),
         lens: page('lens/index.html'),
+        mycelium: page('mycelium/index.html'),
         nebula: page('nebula/index.html'),
       },
     },

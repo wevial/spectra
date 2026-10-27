@@ -17,6 +17,7 @@
         "@spectra/dither": "workspace:*",
         "@spectra/glitch": "workspace:*",
         "@spectra/lens": "workspace:*",
+        "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
         "lil-gui": "^0.20.0",
       },
@@ -47,6 +48,13 @@
     },
     "cursors/lens": {
       "name": "@spectra/lens",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/mycelium": {
+      "name": "@spectra/mycelium",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
@@ -266,6 +274,8 @@
     "@spectra/glitch": ["@spectra/glitch@workspace:cursors/glitch"],
 
     "@spectra/lens": ["@spectra/lens@workspace:cursors/lens"],
+
+    "@spectra/mycelium": ["@spectra/mycelium@workspace:cursors/mycelium"],
 
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
 

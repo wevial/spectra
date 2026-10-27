@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/mycelium",
+  "version": "0.1.0",
+  "description": "A Physarum-style network of agents that blooms into branching veins; the cursor's trail is food the network reroutes toward.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}
