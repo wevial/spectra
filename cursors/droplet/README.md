@@ -4,9 +4,11 @@ Water on a phone screen. The cursor carries a big drop that magnifies the
 panel into its red, green and blue subpixels. The screen around it is beaded
 with smaller drops that swirl with moiré rainbows or show the screen upside
 down. Drops that touch coalesce: a neck forms, the smaller drains into the
-bigger, and the blob lurches toward it before rounding out. As
-it moves it leaves a trail: fine droplets that soon evaporate, plus bigger
-ones while it carries swallowed water. It wobbles when it stops. Click to flick a spray of
+bigger over a second or so, and the blob leans toward it before rounding
+out; pull away first and they separate. As it moves it leaves a wet streak,
+like rain running down a window, that pinches into a chain of uneven beads,
+plus bigger drops while it carries swallowed water. It wobbles when it
+stops. Click to flick a spray of
 new drops. Shows any image, canvas or video, or a lock screen by default.
 
 ```js
@@ -29,6 +31,8 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
 - **Water.** One surface over cover glass above the pixels. Each drop is a
   low dome with a slightly lumpy, pinned outline, and neighbours blend through
   a smooth max sized to the smaller dome, so drops fuse only once they touch.
+  The streak is a ridge along the drop's path in the same surface, narrowing
+  between its points as it ages until it is turned into beads.
   Each dome is a plano-convex lens. View rays refract at its surface and land on the panel,
   traced per channel with exaggerated dispersion. The glass thickness is set
   so the cursor's drop magnifies `magnify`×. Smaller drops on the same glass

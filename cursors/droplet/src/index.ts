@@ -7,7 +7,7 @@
 
 import { Program, VERTEX, makeBlit, createStage, SourceTexture } from '@spectra/core';
 import type { Source } from '@spectra/core';
-import { DROPLET, MAX_DROPS, BIN } from './shaders';
+import { DROPLET, MAX_DROPS, MAX_TRAIL, BIN } from './shaders';
 import { drawPoster } from './poster';
 
 export type DropletSource = Source;
@@ -67,10 +67,22 @@ interface Drop {
   flat: number;      // dome height relative to a full drop, 0.1..1
   merging?: boolean; // flowing into the cursor's drop
   into?: Drop;       // flowing into this resting drop
+  r0?: number;       // radius when it started to drain
   life?: number;     // seconds left before a trail droplet evaporates
 }
 
+interface StreakPoint {
+  x: number;    // uv
+  y: number;
+  w: number;    // half-width, fraction of height
+  age: number;
+  cut: boolean; // a new streak starts here
+}
+
 const WATER = 1.333;
+/** Seconds before a streak starts to pinch, and when it has broken into beads. */
+const PINCH_FROM = 1.2;
+const BEAD_AT = 2.6;
 const TILE_ROWS = 12;
 
 /**
@@ -159,6 +171,9 @@ export function mount(
   let idle = 0;
   let time = 0;
   let rainDue = 0;
+  let streak: StreakPoint[] = [];
+  let sinceStreak = Infinity;
+  const streakUniforms = new Float32Array(MAX_TRAIL * 4);
   const anchor = { x: 0.5, y: 0.5 };
   const uniforms = new Float32Array(MAX_DROPS * 4);
 
@@ -239,6 +254,7 @@ export function mount(
       if (d.dying || d.merging || d.into || d.grow < 1) continue;
       if (dist(drop.x, drop.y, d.x, d.y) > rc + d.r * 0.9) continue;
       d.merging = true;
+      d.r0 = d.r;
       drop.spring = Math.min(drop.spring + 1, 5);
     }
     const resting = drops.filter((d) => !d.dying && !d.merging && !d.into && d.grow >= 1 && d.life === undefined);
@@ -246,18 +262,23 @@ export function mount(
       for (let j = i + 1; j < resting.length; j++) {
         const u = resting[i], v = resting[j];
         if (u.into || v.into || dist(u.x, u.y, v.x, v.y) > (u.r + v.r) * 0.95) continue;
-        if (u.r < v.r) u.into = v;
-        else v.into = u;
+        const [small, big] = u.r < v.r ? [u, v] : [v, u];
+        small.into = big;
+        small.r0 = small.r;
       }
     }
     for (const d of drops) {
       if (d.dying || !(d.merging || d.into)) continue;
       const target = d.merging ? { x: drop.x, y: drop.y, r: rc } : d.into!;
       if (d.into?.dying) { d.into = undefined; continue; }
-      const k = 1 - Math.exp(-dt * 4);
+      // Pulled apart before it drained: the neck snaps and they separate.
+      if (d.merging && dist(target.x, target.y, d.x, d.y) > rc + d.r * 1.3) { d.merging = false; continue; }
+      // It drains through the neck where it sits, creeping only a little
+      // toward the bigger drop, which leans toward it as the water arrives.
+      const k = 1 - Math.exp(-dt * 0.6);
       d.x += (target.x - d.x) * k;
       d.y += (target.y - d.y) * k;
-      const r = d.r * Math.exp(-dt * 4);
+      const r = d.r * Math.exp(-dt * 1.3);
       const flow = d.r ** 3 - r ** 3;
       d.r = r;
       const share = flow / (target.r ** 3 + flow);
@@ -273,7 +294,7 @@ export function mount(
         t.r = Math.cbrt(t.r ** 3 + flow);
       }
       const tr = d.merging ? rc : d.into!.r;
-      if (dist(target.x, target.y, d.x, d.y) + d.r < tr * 0.75 || d.r < config.size * 0.015) {
+      if (d.r < (d.r0 ?? d.r) * 0.2 || dist(target.x, target.y, d.x, d.y) + d.r < tr * 0.9) {
         if (d.merging) drop.extra += d.r ** 3;
         else d.into!.r = Math.cbrt(d.into!.r ** 3 + d.r ** 3);
         d.dying = true;
@@ -282,28 +303,36 @@ export function mount(
     }
     rc = radius();
 
-    // A moving drop leaves a trail: a steady dribble of fine droplets that
-    // soon evaporate, plus bigger ones while it carries swallowed water.
-    drop.travel += moved;
-    const behind = (r: number, spread: number): [number, number] => {
-      const back = rc * (1 + 0.3 * Math.max(drop.stretch, 0)) + r * 1.3;
-      const side = (Math.random() - 0.5) * rc * spread;
-      return [drop.x + (-drop.dirX * back - drop.dirY * side) / a, drop.y - drop.dirY * back + drop.dirX * side];
-    };
-    // Carrying more than about half again its own size, it sheds hard.
-    const heavy = drop.extra > 2.4 * config.size ** 3;
-    if (drop.travel > rc * (heavy ? 0.12 : 0.25) && drop.speed > 0.08 && !still) {
-      drop.travel = 0;
-      const shed = drop.extra > (config.size * 0.12) ** 3 && (heavy || Math.random() < 0.5);
-      if (shed) {
-        const r = Math.min(Math.cbrt(drop.extra) * 0.8, config.size * 0.35) * (0.5 + 0.5 * Math.random());
-        const [x, y] = behind(r, 0.8);
-        if (deposit(x, y, r)) drop.extra = Math.max(drop.extra - r ** 3, 0);
-      } else {
-        const r = config.size * (0.04 + 0.1 * Math.random() ** 2);
-        const [x, y] = behind(r, 1.4);
-        deposit(x, y, r, 4 + Math.random() * 6, 0.6);
+    // A moving drop leaves a wet streak along its path, like rain running
+    // down a window. After a moment it pinches between its points and breaks
+    // into a chain of beads, which evaporate slowly.
+    sinceStreak += dt;
+    for (const s of streak) s.age += dt;
+    const head = streak[streak.length - 1];
+    if (drop.speed > 0.08 && !still && (!head || dist(head.x, head.y, drop.x, drop.y) > rc * 0.22)) {
+      streak.push({ x: drop.x, y: drop.y, w: rc * 0.16 * (0.85 + 0.3 * Math.random()), age: 0, cut: !head || sinceStreak > 0.5 });
+      sinceStreak = 0;
+    }
+    while (streak.length && (streak[0].age > BEAD_AT || streak.length > MAX_TRAIL - 1)) {
+      const s = streak.shift()!;
+      // Beads come out uneven: some necks drain into a neighbour instead.
+      if (Math.random() < 0.75) {
+        const j = s.w * 0.3;
+        deposit(s.x + ((Math.random() - 0.5) * j) / a, s.y + (Math.random() - 0.5) * j, s.w * (0.5 + 0.55 * Math.random()), 12 + Math.random() * 18, 0.7);
       }
+      if (streak.length) streak[0].cut = true;
+    }
+
+    // Swallowed water sheds behind it as bigger drops; harder when overfull.
+    drop.travel += moved;
+    const heavy = drop.extra > 2.4 * config.size ** 3;
+    if (drop.travel > rc * (heavy ? 0.12 : 0.3) && drop.speed > 0.08 && !still && drop.extra > (config.size * 0.12) ** 3) {
+      drop.travel = 0;
+      const r = Math.min(Math.cbrt(drop.extra) * 0.8, config.size * 0.35) * (0.5 + 0.5 * Math.random());
+      const back = rc * (1 + 0.3 * Math.max(drop.stretch, 0)) + r * 1.3;
+      const side = (Math.random() - 0.5) * rc * 0.8;
+      const x = drop.x + (-drop.dirX * back - drop.dirY * side) / a, y = drop.y - drop.dirY * back + drop.dirX * side;
+      if (deposit(x, y, r)) drop.extra = Math.max(drop.extra - r ** 3, 0);
     }
     drop.extra *= Math.exp(-dt / 12);
 
@@ -358,6 +387,19 @@ export function mount(
       }
     };
     bin(0, drop.x, drop.y, rc * (1 + sway) * (2 + 2 * Math.abs(drop.stretch)));
+    // The streak, ending at the drop while it's still running.
+    const points = sinceStreak < 0.5 && streak.length ? [...streak, { x: drop.x, y: drop.y, w: streak[streak.length - 1].w, age: 0, cut: false }] : streak;
+    points.forEach((s, i) => {
+      const pinch = Math.min(Math.max((s.age - PINCH_FROM) / (BEAD_AT - PINCH_FROM), 0), 1);
+      const w = s.w * (1 - 0.2 * pinch);
+      streakUniforms.set([s.x * a, s.y, s.cut ? -w : w, pinch * pinch * (3 - 2 * pinch)], i * 4);
+    });
+    for (let i = 0; i + 1 < points.length; i++) {
+      const s = points[i], e = points[i + 1];
+      if (e.cut) continue;
+      const half = dist(s.x, s.y, e.x, e.y) / 2 + Math.max(s.w, e.w) * 1.2;
+      bin(MAX_DROPS + i, (s.x + e.x) / 2, (s.y + e.y) / 2, half);
+    }
     sized.forEach(({ d, r }, i) => bin(i + 1, d.x, d.y, r * 1.5)); // glints spill past the rim
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, binTex);
@@ -381,6 +423,7 @@ export function mount(
     gl.uniform4fv(u['uDrops[0]'], uniforms);
     gl.uniform1i(u.uBins, 1);
     gl.uniform1f(u.uGlass, glass);
+    gl.uniform4fv(u['uTrail[0]'], streakUniforms);
     gl.uniform2f(u.uTiles, cols, rows);
     gl.uniform2f(u.uDir, drop.dirX, drop.dirY);
     gl.uniform1f(u.uStretch, drop.stretch);
@@ -406,6 +449,7 @@ export function mount(
     wipe() {
       for (const d of drops) d.dying = true;
       drop.extra = 0;
+      streak = [];
     },
     destroy() {
       ac.abort();

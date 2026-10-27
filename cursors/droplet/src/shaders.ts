@@ -1,6 +1,8 @@
 export const MAX_DROPS = 128;
-/** Drops listed per screen tile; the smallest are dropped past this. */
-export const BIN = 10;
+/** Points along the wet streak a moving drop leaves (ids after the drops). */
+export const MAX_TRAIL = 64;
+/** Drops and streak segments listed per screen tile; the smallest drops are dropped past this. */
+export const BIN = 12;
 
 // A phone screen with water on it. The panel is a grid of emitters (RGB
 // stripes, or a diamond pentile), far too fine to see until a drop sits on
@@ -28,6 +30,7 @@ uniform float uAspect;
 uniform float uPx;          // panel pixels per height unit
 uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, flatness×10 + shape seed
 uniform float uGlass;       // cover glass thickness, height units
+uniform vec4 uTrail[${MAX_TRAIL}]; // streak points: center, half-width (negative: a new streak starts here), pinch 0..1
 uniform highp usampler2D uBins; // per tile, the drops that reach it (255: end of list)
 uniform vec2 uTiles;
 uniform vec2 uDir;          // drop 0 (the cursor's) heading, and how far it's stretched
@@ -198,36 +201,55 @@ void main() {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
     if (id == 255u) break;
     int i = int(id);
-    vec4 d = uDrops[i];
-    vec2 o = p - d.xy;
-    float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
-    if (dot(o, o) >= reach * reach) continue;
-    shine += glint(p, d);
-    float H = d.z * z0 * floor(d.w) / 10.0;
-    float hi;
-    vec2 g;
-    if (i == 0) {
-      // The moving drop stretches along its heading, with a tail behind.
-      vec2 perp = vec2(-uDir.y, uDir.x);
-      float tail = dot(o, uDir) < 0.0 ? 1.0 + max(uStretch, 0.0) * 0.8 : 1.0;
-      vec2 J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
-      vec2 q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
-      hi = H * (1.0 - dot(q, q));
-      vec2 gf = -2.0 * H * q * J / d.z;
-      g = gf.x * uDir + gf.y * perp;
-      o0 = o;
-      rho0 = length(q);
+    float H, hi;
+    vec2 g, c;
+    float r;
+    if (i >= ${MAX_DROPS}) {
+      // A segment of the wet streak: a low ridge along the drop's path. As it
+      // ages it pinches between its points, the way a rivulet beads up.
+      vec4 A = uTrail[i - ${MAX_DROPS}], B = uTrail[i - ${MAX_DROPS} + 1];
+      vec2 ab = B.xy - A.xy;
+      float t = clamp(dot(p - A.xy, ab) / max(dot(ab, ab), 1e-10), 0.0, 1.0);
+      c = A.xy + ab * t;
+      vec2 o = p - c;
+      float pinch = sin(3.14159265 * t);
+      r = mix(abs(A.z), abs(B.z), t) * (1.0 - 0.75 * mix(A.w, B.w, t) * pinch * pinch);
+      if (dot(o, o) >= 1.44 * r * r) continue;
+      H = r * z0 * 0.7;
+      hi = H * (1.0 - dot(o, o) / (r * r));
+      g = -2.0 * H * o / (r * r);
     } else {
-      // Drops pin to the glass unevenly, so bigger ones aren't quite round.
-      float seed = fract(d.w) * 97.0;
-      float th = atan(o.y, o.x);
-      float lumpy = smoothstep(0.15, 0.6, d.z / uSize);
-      float rr = d.z * (1.0 + lumpy * (0.08 * sin(2.0 * th + seed) + 0.05 * sin(3.0 * th + seed * 1.7)));
-      hi = H * (1.0 - dot(o, o) / (rr * rr));
-      g = -2.0 * H * o / (rr * rr);
+      vec4 d = uDrops[i];
+      vec2 o = p - d.xy;
+      float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
+      if (dot(o, o) >= reach * reach) continue;
+      shine += glint(p, d);
+      H = d.z * z0 * floor(d.w) / 10.0;
+      c = d.xy;
+      r = d.z;
+      if (i == 0) {
+        // The moving drop stretches along its heading, with a tail behind.
+        vec2 perp = vec2(-uDir.y, uDir.x);
+        float tail = dot(o, uDir) < 0.0 ? 1.0 + max(uStretch, 0.0) * 0.8 : 1.0;
+        vec2 J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
+        vec2 q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
+        hi = H * (1.0 - dot(q, q));
+        vec2 gf = -2.0 * H * q * J / d.z;
+        g = gf.x * uDir + gf.y * perp;
+        o0 = o;
+        rho0 = length(q);
+      } else {
+        // Drops pin to the glass unevenly, so bigger ones aren't quite round.
+        float seed = fract(d.w) * 97.0;
+        float th = atan(o.y, o.x);
+        float lumpy = smoothstep(0.15, 0.6, d.z / uSize);
+        float rr = d.z * (1.0 + lumpy * (0.08 * sin(2.0 * th + seed) + 0.05 * sin(3.0 * th + seed * 1.7)));
+        hi = H * (1.0 - dot(o, o) / (rr * rr));
+        g = -2.0 * H * o / (rr * rr);
+      }
     }
     if (h < -1e2) {
-      h = hi; grad = g; peak = H; a = d.z; center = d.xy; own = float(i == 0);
+      h = hi; grad = g; peak = H; a = r; center = c; own = float(i == 0);
     } else {
       // Smooth max, softened in proportion to the smaller dome, so drops
       // only fuse once they touch.
@@ -236,8 +258,8 @@ void main() {
       h = mix(h, hi, m) + k * m * (1.0 - m);
       grad = mix(grad, g, m);
       peak = max(peak, H);
-      a = mix(a, d.z, m);
-      center = mix(center, d.xy, m);
+      a = mix(a, r, m);
+      center = mix(center, c, m);
       own = mix(own, float(i == 0), m);
     }
   }
