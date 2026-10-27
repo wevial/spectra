@@ -19,6 +19,8 @@ panel((gui) => {
   rays.add(c, 'rays', 20, 240, 1).name('slots');
   rays.add(c, 'length', 0.15, 1.2, 0.01);
   rays.add(c, 'width', 0.001, 0.012, 0.0005);
+  rays.add(c, 'swing', 0, 3, 0.05);
+  rays.add(c, 'tilt', 0, 1.5, 0.05);
 
   const film = gui.addFolder('film');
   film.add(c, 'shards', 1, 16, 0.5);

@@ -4,6 +4,19 @@
 // hashing per pixel.
 
 export const RINGS = 3;
+/**
+ * How far each ring turns, radians per height unit the sun moves from the
+ * screen's center, along x and y. Rings turn at different rates and
+ * directions, so as the sun moves the dashes swing past each other, the way
+ * shards catch the light differently as the sun's angle changes.
+ */
+const TURN = [[1.1, 0.4], [-0.8, 0.9], [0.5, -1.2]];
+
+/** Each ring's rotation, radians, for the sun at (x, y) from the center (height units). */
+export function ringTurns(x: number, y: number, swing = 1): number[] {
+  return TURN.map(([tx, ty]) => (tx * x + ty * y) * swing);
+}
+
 /** Share of slots left empty, so the burst has gaps like the real thing. */
 const EMPTY = 0.45;
 

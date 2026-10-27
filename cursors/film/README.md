@@ -34,6 +34,9 @@ See `DEFAULTS` in `src/index.ts` for every option.
 - **Dashes.** Three rings of slots around the sun, each slot one shard's
   spectrum or empty. The slots are built on the CPU from a seeded PRNG and
   read by the shader; a pixel only looks at the slots its angle falls in.
+  As the sun moves, the rings turn at different rates and directions, so the
+  dashes swing past each other, and the burst stretches toward the screen's
+  center the nearer the sun is to an edge, like light coming in at a slant.
 - **Film.** Voronoi shards, stretched into slivers, some split again by
   finer cracks that fade out partway. Each shard is tinted by the wavelength
   its grating sends toward the eye, so the tints shift as the sun moves, and

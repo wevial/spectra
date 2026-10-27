@@ -30,6 +30,8 @@ uniform float uSpread;
 uniform float uRays;         // dash slots per ring (integer)
 uniform highp sampler2D uDashes; // per slot: see dashTable()
 uniform float uRingOffset[${RINGS}];
+uniform float uRingTurn[${RINGS}];  // each ring's rotation with the sun's position
+uniform vec2 uTilt;          // the sun's offset from the screen's center, scaled: light coming in at a slant
 uniform float uWidth;
 uniform float uLength;       // dash length, × the grating equation's
 uniform float uShards;       // shards per height unit
@@ -130,17 +132,21 @@ void main() {
 
   // ---- The cast spectra: three rings of dash slots around the sun.
   float theta = atan(v.y, v.x);
+  // Light in at a slant fans its spectra out farther in the direction it
+  // travels: toward the screen's center, away from where the sun sits.
+  float skew = 1.0 - dot(v / max(r, 1e-4), uTilt);
   vec3 rays = vec3(0);
   for (int l = 0; l < ${RINGS}; l++) {
-    float i0 = floor(theta / TAU * uRays - uRingOffset[l]);
+    float turn = uRingTurn[l];
+    float i0 = floor((theta - turn) / TAU * uRays - uRingOffset[l]);
     for (int k = -1; k <= 1; k++) {
       int slot = int(mod(i0 + float(k), uRays));
       vec4 a = texelFetch(uDashes, ivec2(slot, 2 * l), 0);
       if (a.w == 0.0) continue;
-      float r0 = uSpread * a.y;
+      float r0 = uSpread * a.y * skew;
       if (r < r0 * (1.0 - 0.4 * uLength) || r > 2.1 * r0 * (1.0 + 0.4 * uLength)) continue;
       // Cheap reject by angle before any trig: the glow fades out by 5 widths.
-      float da = theta - a.x;
+      float da = theta - turn - a.x;
       da -= TAU * round(da / TAU);
       if (abs(da) * r > 0.8 * uSize + 5.0 * (1.5 * uWidth + 0.0015 * r)) continue;
       vec4 b = texelFetch(uDashes, ivec2(slot, 2 * l + 1), 0);

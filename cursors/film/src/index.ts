@@ -8,7 +8,7 @@
 import { Program, VERTEX, makeBlit, createStage } from '@spectra/core';
 import { FILM } from './shaders';
 import { spectrumTable } from './spectrum';
-import { dashTable, RINGS } from './dashes';
+import { dashTable, ringTurns, RINGS } from './dashes';
 
 export { wavelengthToRgb } from './spectrum';
 
@@ -25,6 +25,10 @@ export const DEFAULTS = {
   rays: 120,
   /** Dash length, × the grating equation's (shorter reads more like dashes). */
   length: 0.5,
+  /** How far the rays swing around as the sun moves. */
+  swing: 1,
+  /** How far the burst stretches toward the screen's center as the sun nears an edge. */
+  tilt: 0.6,
   /** Dash width, fraction of height. */
   width: 0.0035,
   /** Shards per screen height. */
@@ -147,6 +151,10 @@ export function mount(container: HTMLElement, opts: Partial<FilmConfig> = {}): F
     gl.bindTexture(gl.TEXTURE_2D, dashes);
     gl.uniform1i(u.uDashes, 1);
     gl.uniform1fv(u['uRingOffset[0]'], ringOffsets);
+    const ox = (sun.x - 0.5) * a, oy = sun.y - 0.5;
+    gl.uniform1fv(u['uRingTurn[0]'], ringTurns(ox, oy, config.swing));
+    const tilt = Math.min(Math.hypot(ox, oy) * config.tilt, 0.6) / Math.max(Math.hypot(ox, oy), 1e-4);
+    gl.uniform2f(u.uTilt, ox * tilt, oy * tilt);
     gl.uniform1f(u.uWidth, config.width);
     gl.uniform1f(u.uLength, Math.max(config.length, 0.05));
     gl.uniform1f(u.uShards, config.shards);

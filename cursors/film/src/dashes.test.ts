@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { dashTable, RINGS } from './dashes';
+import { dashTable, ringTurns, RINGS } from './dashes';
 
 describe('dashTable', () => {
   const rays = 120;
@@ -32,5 +32,21 @@ describe('dashTable', () => {
     const share = empty / (rays * RINGS);
     expect(share).toBeGreaterThan(0.3);
     expect(share).toBeLessThan(0.6);
+  });
+});
+
+describe('ringTurns', () => {
+  test('still at the center', () => {
+    for (const t of ringTurns(0, 0)) expect(t).toBe(0);
+  });
+
+  test('one turn per ring, not all the same way', () => {
+    const turns = ringTurns(0.3, 0);
+    expect(turns).toHaveLength(RINGS);
+    expect(turns.some((t) => t > 0) && turns.some((t) => t < 0)).toBe(true);
+  });
+
+  test('swing scales the turn', () => {
+    expect(ringTurns(0.2, -0.1, 2)).toEqual(ringTurns(0.2, -0.1).map((t) => t * 2));
   });
 });
