@@ -26,6 +26,7 @@ export default defineConfig({
         filings: page('filings/index.html'),
         phosphor: page('phosphor/index.html'),
         droplet: page('droplet/index.html'),
+        film: page('film/index.html'),
       },
     },
   },

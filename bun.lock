@@ -19,6 +19,7 @@
         "@spectra/dither": "workspace:*",
         "@spectra/droplet": "workspace:*",
         "@spectra/filings": "workspace:*",
+        "@spectra/film": "workspace:*",
         "@spectra/glitch": "workspace:*",
         "@spectra/lens": "workspace:*",
         "@spectra/mycelium": "workspace:*",
@@ -61,6 +62,13 @@
     },
     "cursors/filings": {
       "name": "@spectra/filings",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/film": {
+      "name": "@spectra/film",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
@@ -315,6 +323,8 @@
     "@spectra/droplet": ["@spectra/droplet@workspace:cursors/droplet"],
 
     "@spectra/filings": ["@spectra/filings@workspace:cursors/filings"],
+
+    "@spectra/film": ["@spectra/film@workspace:cursors/film"],
 
     "@spectra/gallery": ["@spectra/gallery@workspace:apps/gallery"],
 

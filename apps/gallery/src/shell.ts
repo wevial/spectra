@@ -1,8 +1,8 @@
 import GUI from 'lil-gui';
 
-export const EFFECTS = ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'phosphor', 'droplet'] as const;
+export const EFFECTS = ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'phosphor', 'droplet', 'film'] as const;
 
-const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole' };
+const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole', film: 'rainbow film' };
 
 export function renderNav() {
   const nav = document.querySelector<HTMLElement>('.nav')!;

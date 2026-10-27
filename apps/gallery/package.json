@@ -13,6 +13,7 @@
     "@spectra/blackhole": "workspace:*",
     "@spectra/dither": "workspace:*",
     "@spectra/droplet": "workspace:*",
+    "@spectra/film": "workspace:*",
     "@spectra/filings": "workspace:*",
     "@spectra/glitch": "workspace:*",
     "@spectra/lens": "workspace:*",
