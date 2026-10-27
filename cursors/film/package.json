@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/film",
+  "version": "0.1.0",
+  "description": "Holographic cracked-ice window film with the sun behind it: pastel shards and a burst of rainbow dashes.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}
