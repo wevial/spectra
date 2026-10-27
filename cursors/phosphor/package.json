@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/phosphor",
+  "version": "0.1.0",
+  "description": "A vector CRT where the cursor is the electron beam: phosphor flash and long afterglow, brighter where the beam lingers, with bloom and a curved screen.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

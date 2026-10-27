@@ -22,6 +22,7 @@
         "@spectra/lens": "workspace:*",
         "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
+        "@spectra/phosphor": "workspace:*",
         "@spectra/riso": "workspace:*",
         "lil-gui": "^0.20.0",
       },
@@ -81,6 +82,13 @@
     "cursors/nebula": {
       "name": "@spectra/nebula",
       "version": "1.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/phosphor": {
+      "name": "@spectra/phosphor",
+      "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
       },
@@ -307,6 +315,8 @@
     "@spectra/mycelium": ["@spectra/mycelium@workspace:cursors/mycelium"],
 
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
+
+    "@spectra/phosphor": ["@spectra/phosphor@workspace:cursors/phosphor"],
 
     "@spectra/riso": ["@spectra/riso@workspace:cursors/riso"],
 
