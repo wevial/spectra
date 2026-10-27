@@ -2,7 +2,12 @@
   "name": "spectra",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "cursors/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "cursors/*",
+    "filters/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "bun --filter @spectra/gallery dev",
     "build": "bun --filter @spectra/gallery build",

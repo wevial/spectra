@@ -1,23 +1,19 @@
 # Droplet cursor
 
-Water on a phone screen. The cursor carries a big drop that magnifies the
-panel into its red, green and blue subpixels. The screen around it is beaded
-with smaller drops that swirl with moiré rainbows or show the screen upside
-down. Drops that touch coalesce: a neck forms, the smaller drains into the
-bigger over a second or so, and the blob leans toward it before rounding
-out; pull away first and they separate. As it moves it leaves a wet streak,
-like rain running down a window: it stays whole for a few seconds, thins
-as it dries, then pinches off unevenly into a few elongated pieces. While
-it carries swallowed water it also sheds bigger drops. It wobbles when it
-stops. Click to flick a spray of new drops. Shows any image, canvas or
-video, or a lock screen by default.
+A drop of water on a phone screen, carried by the cursor. It magnifies the
+panel into its red, green and blue subpixels, bulges them like a real lens,
+and fringes into color at the rim. It stretches as it moves and wobbles when
+it stops; click to squish it. Shows any image, canvas or video, or a lock
+screen by default.
+
+For a screen beaded with many drops, see the rain filter
+([`filters/rain`](../../filters/rain)), built on the same renderer.
 
 ```js
 import { mount } from '@spectra/droplet';
 
 const screen = mount(document.querySelector('#hero'), { layout: 'oled', source: '/photo.jpg' });
 screen.config.magnify = 14; // live tuning, picked up next frame
-screen.wipe();
 screen.destroy();
 ```
 
@@ -26,34 +22,29 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
 
 ## How it works
 
+The renderer lives in `src/water.ts` (exported as `@spectra/droplet/water`)
+and `src/shaders.ts`.
+
 - **Panel.** The content is sampled once per panel pixel (`pixel` CSS px),
   then split into subpixel shapes that each emit one channel. That's the
   same light, concentrated, so it averages back to the image from afar.
+  `soften` lets the subpixels glow into each other up close.
 - **Water.** One surface over cover glass above the pixels. Each drop is a
-  low dome with a slightly lumpy, pinned outline, and neighbours blend through
-  a smooth max sized to the smaller dome, so drops fuse only once they touch.
-  The streak is a ridge along the drop's path in the same surface, its
-  points kept in a small float texture; as it ages, a few of them pinch to
-  nothing and the pieces between end in rounded tips.
+  low dome; neighbours blend through a smooth max sized to the smaller dome,
+  so drops fuse only once they touch.
 - **Optics.** Each dome is a plano-convex lens. View rays refract at its
   surface and land on the panel, traced per channel with exaggerated
-  dispersion. The glass thickness is set so the cursor's drop magnifies
-  `magnify`× at its apex; it piles up taller as it takes on water, so it
-  keeps that. Smaller drops on the same glass overshoot focus, so they
-  invert and shrink the image.
+  dispersion. The glass thickness is set so a drop of `size` magnifies
+  `magnify`× at its apex; the cursor's drop keeps that as it stretches.
 - **Moiré.** Subpixels too fine to resolve alias against a virtual camera
-  sensor (`sensor` CSS px). The stripe pattern's fundamental shows up at
-  the frequency left after removing whole cycles per sensor pixel, and its
-  phase picks which channel lights. The result is soft rainbow bands that
-  shift as the drops move.
-- **Surface.** Fresnel reflection of a dim room and a soft sunlit window,
-  a rim that bends away from the light, and shallow depth of field. Each drop
-  mirrors a lamp hovering by the cursor where its normal is halfway between
-  lamp and eye, drawn as a hot core with bloom and, on big drops, a twinkling
-  four-point star. Every drop sees the lamp from its own angle, so glints
-  swing around the drops as you move, and far drops catch it on the rim.
-- **Cost.** Drops and streak segments are binned into screen tiles (a small
-  integer texture), so each pixel only checks the ones near it.
+  sensor (`sensor` CSS px): the stripe pattern's fundamental shows up at the
+  frequency left after removing whole cycles per sensor pixel, and its phase
+  picks which channel lights.
+- **Surface.** Fresnel reflection of a dim room and a soft window, a rim that
+  bends away from the light, and shallow depth of field. A lamp hovers by the
+  drop: its reflection is a hot core with bloom and a faint four-point star.
+- **Cost.** Drops are binned into screen tiles (a small integer texture), so
+  each pixel only checks the drops near it.
 
 Requires WebGL2; otherwise the container gets the `droplet-fallback` class.
 Mouse only.

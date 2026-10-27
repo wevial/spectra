@@ -10,15 +10,15 @@ const c = fx.config;
 const picker = sourcePicker(fx.setSource);
 
 panel((gui) => {
-  const water = gui.addFolder('water');
-  water.add(c, 'size', 0.04, 0.3, 0.005);
-  water.add(c, 'magnify', 1.5, 30, 0.5);
-  water.add(c, 'angle', 10, 70, 1).name('contact angle');
-  water.add(c, 'dispersion', 0, 15, 0.1);
-  water.add(c, 'gloss', 0, 3, 0.05);
-  water.add(c, 'scatter', 0, 70, 1);
-  water.add(c, 'rain', 0, 10, 0.1).name('rain (/s)');
-  water.add({ wipe: fx.wipe }, 'wipe');
+  const drop = gui.addFolder('drop');
+  drop.add(c, 'size', 0.04, 0.3, 0.005);
+  drop.add(c, 'magnify', 1.5, 30, 0.5);
+  drop.add(c, 'angle', 10, 70, 1).name('contact angle');
+  drop.add(c, 'dispersion', 0, 15, 0.1);
+  drop.add(c, 'soften', 0, 1, 0.01);
+  drop.add(c, 'gloss', 0, 3, 0.05);
+  drop.add(c, 'sparkle', 0, 2, 0.05);
+  drop.add(c, 'lag', 0, 1, 0.01).name('lag (s)');
 
   const screen = gui.addFolder('screen');
   screen.add(c, 'layout', Object.keys(LAYOUTS));

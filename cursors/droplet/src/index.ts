@@ -1,45 +1,45 @@
-// Droplet cursor — water on a phone screen. The cursor carries a big drop
-// that magnifies the panel into its subpixels; the screen around it is
-// beaded with smaller drops that swirl with moiré rainbows. The big drop
-// swallows the drops it runs over, sheds the extra water behind it as it
-// moves, and wobbles when it stops. Click to flick a spray of new drops.
-// Shows any image, canvas or video, or a lock-screen poster by default.
+// Droplet cursor — a drop of water on a phone screen, carried by the cursor.
+// It magnifies the panel into its subpixels, fringes into color at the rim,
+// stretches as it moves and wobbles when it stops. Click to squish it. Shows
+// any image, canvas or video, or a lock-screen poster by default.
+//
+// The screen beaded with many drops is the rain filter (@spectra/rain),
+// built on the same renderer (./water).
 
-import { Program, VERTEX, makeBlit, createStage, SourceTexture } from '@spectra/core';
+import { createStage } from '@spectra/core';
 import type { Source } from '@spectra/core';
-import { DROPLET, MAX_DROPS, MAX_TRAIL, BIN, BIN_END } from './shaders';
-import { drawPoster } from './poster';
+import { createWater } from './water';
+import type { WaterLook } from './water';
+
+export { LAYOUTS } from './water';
+export type { Layout } from './water';
 
 export type DropletSource = Source;
 
-export const LAYOUTS = { lcd: 0, oled: 1 } as const;
-export type Layout = keyof typeof LAYOUTS;
-
 export const DEFAULTS = {
-  /** Subpixel layout: RGB stripes or a diamond pentile. */
-  layout: 'lcd' as Layout,
+  layout: 'lcd' as WaterLook['layout'],
   /** Panel pixel pitch, CSS px. */
   pixel: 2,
-  /** Radius of the cursor's drop, fraction of height. */
+  /** Radius of the drop, fraction of height. */
   size: 0.12,
-  /** Magnification at the center of the cursor's drop. */
+  /** Magnification at the center of the drop. */
   magnify: 10,
   /** Contact angle, degrees. Flatter drops distort less toward the rim. */
   angle: 35,
   /** Color split, × water's real dispersion. */
-  dispersion: 4,
+  dispersion: 2,
   /** Camera sensor pitch, CSS px: the subpixel grid beats against it into moiré bands. */
   sensor: 1.6,
-  /** Gaps between pixels outside the drops, 0..1. */
-  grid: 0.18,
-  /** Blur toward a drop's rim (shallow depth of field), panel px. */
+  /** Gaps between pixels outside the drop, 0..1. */
+  grid: 0.12,
+  /** Blur toward the rim (shallow depth of field), panel px. */
   focus: 0.35,
-  /** Reflection of the room and ring light. */
+  /** Reflection of the room and the lamp. */
   gloss: 1,
-  /** Drops beaded on the screen (per unit of width/height). */
-  scatter: 55,
-  /** New drops landing per second, while there are fewer than `scatter`. */
-  rain: 1.5,
+  /** 0..1: magnified subpixels glow into each other instead of sitting on black. */
+  soften: 0.35,
+  /** Strength of the star glint. */
+  sparkle: 0.5,
   /** Seconds for the drop to catch up with the cursor. */
   lag: 0.12,
   font: '"Geist", "Inter", system-ui, sans-serif',
@@ -52,40 +52,8 @@ export interface DropletHandle {
   config: DropletConfig;
   /** Swap what the screen shows. A string is loaded as an image URL; null restores the poster. */
   setSource(source: DropletSource | null): Promise<void>;
-  /** Wipe the screen dry (rain refills it). */
-  wipe(): void;
   destroy(): void;
 }
-
-interface Drop {
-  x: number;      // uv
-  y: number;
-  r: number;      // radius, fraction of height
-  grow: number;   // 0..1 as it lands, back to 0 as it's removed
-  dying: boolean;
-  seed: number;      // 0..1, shapes its outline
-  flat: number;      // dome height relative to a full drop, 0.1..1
-  merging?: boolean; // flowing into the cursor's drop
-  into?: Drop;       // flowing into this resting drop
-  r0?: number;       // radius when it started to drain
-  life?: number;     // seconds left before a trail droplet evaporates
-}
-
-interface StreakPoint {
-  x: number;    // uv
-  y: number;
-  w: number;    // half-width when fresh, fraction of height
-  age: number;
-  cut: boolean; // a new streak starts here
-  neck: number; // 0..1: how fully the streak pinches off here as it breaks up
-}
-
-const WATER = 1.333;
-/** A streak stays whole, then pinches off at its necks, then dries: seconds. */
-const STREAK_PINCH_FROM = 4;
-const STREAK_PINCH_TO = 8;
-const STREAK_LIFE = 14;
-const TILE_ROWS = 12;
 
 /**
  * Mount the effect into `container` (which should be positioned and sized).
@@ -101,118 +69,27 @@ export function mount(
   const stage = createStage(container);
   if (!stage) {
     container.classList.add('droplet-fallback');
-    return { config, setSource: async () => {}, wipe() {}, destroy() {} };
+    return { config, setSource: async () => {}, destroy() {} };
   }
-  const { gl, canvas, pointer, reducedMotion } = stage;
-  const blit = makeBlit(gl);
-  const program = new Program(gl, VERTEX, DROPLET);
-
-  const content = new SourceTexture(gl);
-  const posterCanvas = document.createElement('canvas');
-  let posterKey = '';
-  async function setSource(next: DropletSource | null) {
-    await content.set(next);
-    if (next == null) posterKey = '';
-  }
-  if (initial) void setSource(initial);
-  document.fonts?.load(`500 64px ${config.font}`).then(() => { posterKey = ''; }, () => {});
-
+  const { canvas, pointer, reducedMotion } = stage;
+  const water = createWater(stage, config, initial);
   const aspect = () => canvas.clientWidth / Math.max(canvas.clientHeight, 1);
-  const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot((ax - bx) * aspect(), ay - by);
 
-  // The beaded screen. Mostly fine mist, a few big drops.
-  let drops: Drop[] = [];
-  const alive = () => drops.filter((d) => !d.dying);
-  function place(x: number, y: number, r: number, grow = 1) {
-    if (alive().some((d) => dist(x, y, d.x, d.y) < (r + d.r) * 1.15)) return false;
-    if (dist(x, y, drop.x, drop.y) < r + radius() * 1.2) return false;
-    drops.push({ x, y, r, grow, dying: false, seed: Math.random(), flat: 1 });
-    trim();
-    return true;
-  }
-  /** Over capacity: the oldest dry off, trail droplets first. */
-  function trim() {
-    const live = alive();
-    const over = live.length - (MAX_DROPS - 1);
-    if (over <= 0) return;
-    const order = [...live.filter((d) => d.life !== undefined), ...live.filter((d) => d.life === undefined)];
-    for (let i = 0; i < over; i++) order[i].dying = true;
-  }
-  /** Leave a droplet behind the cursor's drop (no spacing rules: it's a trail). */
-  function deposit(x: number, y: number, r: number, life?: number, flat = 1) {
-    if (alive().some((d) => dist(x, y, d.x, d.y) < (r + d.r) * 0.9)) return false;
-    drops.push({ x, y, r, grow: 0.4, dying: false, life, seed: Math.random(), flat });
-    trim();
-    return true;
-  }
-  const mistSize = () => config.size * (0.04 + 0.5 * Math.random() ** 2);
-  function scatter(n: number, grow: number) {
-    for (let tries = 0; n > 0 && tries < n * 20; tries++) {
-      if (place(Math.random(), Math.random(), mistSize(), grow)) n--;
-    }
-  }
-
-  // The cursor's drop. Water it swallows is extra volume, shed again behind it.
-  const drop = { x: 0.5, y: 0.5, px: 0.5, py: 0.5, dirX: 1, dirY: 0, speed: 0, stretch: 0, spring: 0, extra: 0, travel: 0 };
-  const radius = () => Math.cbrt(config.size ** 3 + drop.extra);
-  scatter(Math.round(config.scatter * aspect()), 1);
+  const drop = { x: 0.5, y: 0.5, px: 0.5, py: 0.5, dirX: 1, dirY: 0, speed: 0, stretch: 0, spring: 0 };
 
   const ac = new AbortController();
   window.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'mouse' || !pointer.active) return;
-    // A flick of spray around the drop.
-    const rc = radius();
-    for (let i = 0, made = 0; i < 60 && made < 14; i++) {
-      const t = Math.random() * Math.PI * 2;
-      const d = rc * (1.3 + Math.random() * 2.2);
-      if (place(drop.x + (Math.cos(t) * d) / aspect(), drop.y + Math.sin(t) * d, config.size * (0.06 + 0.4 * Math.random() ** 2), 0)) made++;
-    }
-    drop.spring -= 4;
+    if (e.pointerType === 'mouse' && pointer.active) drop.spring -= 4; // squish
   }, { signal: ac.signal });
 
   let idle = 0;
   let time = 0;
-  let rainDue = 0;
-  let streak: StreakPoint[] = [];
-  let sinceStreak = Infinity;
-  let streakLength = 0; // arc length so far, height units: varies the width along it
-  const streakData = new Float32Array(MAX_TRAIL * 4);
-  const streakTex = gl.createTexture()!;
-  gl.activeTexture(gl.TEXTURE2);
-  gl.bindTexture(gl.TEXTURE_2D, streakTex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   const anchor = { x: 0.5, y: 0.5 };
-  const uniforms = new Float32Array(MAX_DROPS * 4);
-
-  // Drops binned into screen tiles, so each pixel only checks those nearby.
-  const binTex = gl.createTexture()!;
-  gl.activeTexture(gl.TEXTURE1);
-  gl.bindTexture(gl.TEXTURE_2D, binTex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  let bins = new Uint16Array(0);
 
   stage.start((dt) => {
     const still = reducedMotion.matches;
     if (!still) time += dt;
     const a = aspect();
-
-    // Content: the poster redraws when the panel size or the minute changes.
-    const pitch = Math.max(config.pixel, 0.5);
-    const pw = Math.max(1, Math.round(canvas.clientWidth / pitch));
-    const ph = Math.max(1, Math.round(canvas.clientHeight / pitch));
-    if (content.source === null) {
-      const now = new Date();
-      const key = `${pw}x${ph} ${now.getHours()}:${now.getMinutes()} ${config.font}`;
-      if (key !== posterKey) {
-        drawPoster(posterCanvas, pw, ph, config.font, now);
-        content.upload(posterCanvas, pw, ph);
-        posterKey = key;
-      }
-    } else {
-      content.tick();
-    }
 
     // Follow the cursor; with none, drift slowly around the screen.
     if (pointer.active) {
@@ -232,7 +109,6 @@ export function mount(
 
     // Speed stretches it along its heading; a spring wobbles it after.
     const vx = ((drop.x - drop.px) * a) / Math.max(dt, 1e-3), vy = (drop.y - drop.py) / Math.max(dt, 1e-3);
-    const moved = Math.hypot(vx, vy) * dt;
     drop.px = drop.x;
     drop.py = drop.y;
     drop.speed += (Math.hypot(vx, vy) - drop.speed) * (1 - Math.exp(-dt * 12));
@@ -252,229 +128,20 @@ export function mount(
       drop.spring += ((target - drop.stretch) * 160 - drop.spring * 9) * dt;
       drop.stretch = Math.max(drop.stretch + drop.spring * dt, -0.35);
     }
-
-    // Coalescence. Drops that touch the cursor's drop, or resting drops that
-    // touch each other, flow together: the smaller drains into the bigger,
-    // and the joined water shifts toward it, so a neck forms (the shader's
-    // smooth union) and the blob lurches, then rounds out.
-    let rc = radius();
-    for (const d of drops) {
-      if (d.dying || d.merging || d.into || d.grow < 1) continue;
-      if (dist(drop.x, drop.y, d.x, d.y) > rc + d.r * 0.9) continue;
-      d.merging = true;
-      d.r0 = d.r;
-      drop.spring = Math.min(drop.spring + 1, 5);
-    }
-    const resting = drops.filter((d) => !d.dying && !d.merging && !d.into && d.grow >= 1 && d.life === undefined);
-    for (let i = 0; i < resting.length; i++) {
-      for (let j = i + 1; j < resting.length; j++) {
-        const u = resting[i], v = resting[j];
-        if (u.into || v.into || dist(u.x, u.y, v.x, v.y) > (u.r + v.r) * 0.95) continue;
-        const [small, big] = u.r < v.r ? [u, v] : [v, u];
-        small.into = big;
-        small.r0 = small.r;
-      }
-    }
-    for (const d of drops) {
-      if (d.dying || !(d.merging || d.into)) continue;
-      const target = d.merging ? { x: drop.x, y: drop.y, r: rc } : d.into!;
-      if (d.into?.dying) { d.into = undefined; continue; }
-      // Pulled apart before it drained: the neck snaps and they separate.
-      if (d.merging && dist(target.x, target.y, d.x, d.y) > rc + d.r * 1.3) { d.merging = false; continue; }
-      // It drains through the neck where it sits, creeping only a little
-      // toward the bigger drop, which leans toward it as the water arrives.
-      const k = 1 - Math.exp(-dt * 0.6);
-      d.x += (target.x - d.x) * k;
-      d.y += (target.y - d.y) * k;
-      const r = d.r * Math.exp(-dt * 1.3);
-      const flow = d.r ** 3 - r ** 3;
-      d.r = r;
-      const share = flow / (target.r ** 3 + flow);
-      if (d.merging) {
-        drop.extra += flow;
-        drop.x += (d.x - drop.x) * share;
-        drop.y += (d.y - drop.y) * share;
-        rc = radius();
-      } else {
-        const t = d.into!;
-        t.x += (d.x - t.x) * share;
-        t.y += (d.y - t.y) * share;
-        t.r = Math.cbrt(t.r ** 3 + flow);
-      }
-      const tr = d.merging ? rc : d.into!.r;
-      if (d.r < (d.r0 ?? d.r) * 0.2 || dist(target.x, target.y, d.x, d.y) + d.r < tr * 0.9) {
-        if (d.merging) drop.extra += d.r ** 3;
-        else d.into!.r = Math.cbrt(d.into!.r ** 3 + d.r ** 3);
-        d.dying = true;
-        d.grow = 0;
-      }
-    }
-    rc = radius();
-
-    // A moving drop leaves a wet streak along its path, like rain running
-    // down a window. It stays whole for a while, thinning as it dries, then
-    // pinches off at a few uneven necks into elongated pieces that dry up.
-    sinceStreak += dt;
-    for (const s of streak) s.age += dt;
-    while (streak.length && streak[0].age > STREAK_LIFE) {
-      streak.shift();
-      if (streak.length) streak[0].cut = true;
-    }
-    const head = streak[streak.length - 1];
-    const step = head ? dist(head.x, head.y, drop.x, drop.y) : 0;
-    if (drop.speed > 0.08 && !still && (!head || step > rc * 0.25)) {
-      const cut = !head || sinceStreak > 0.5;
-      streakLength += cut ? 1 : step;
-      const wave = 0.9 + 0.1 * Math.sin(streakLength * 23) + 0.05 * Math.sin(streakLength * 61 + 2);
-      streak.push({ x: drop.x, y: drop.y, w: rc * 0.45 * wave, age: 0, cut, neck: Math.random() < 0.3 ? 1 : 0.2 * Math.random() });
-      if (streak.length > MAX_TRAIL - 1) {
-        streak.shift();
-        streak[0].cut = true;
-      }
-      sinceStreak = 0;
-    }
-
-    // Swallowed water sheds behind it as bigger drops; harder when overfull.
-    drop.travel += moved;
-    const heavy = drop.extra > 2.4 * config.size ** 3;
-    if (drop.travel > rc * (heavy ? 0.12 : 0.3) && drop.speed > 0.08 && !still && drop.extra > (config.size * 0.12) ** 3) {
-      drop.travel = 0;
-      const r = Math.min(Math.cbrt(drop.extra) * 0.8, config.size * 0.35) * (0.5 + 0.5 * Math.random());
-      const back = rc * (1 + 0.3 * Math.max(drop.stretch, 0)) + r * 1.3;
-      const side = (Math.random() - 0.5) * rc * 0.8;
-      const x = drop.x + (-drop.dirX * back - drop.dirY * side) / a, y = drop.y - drop.dirY * back + drop.dirX * side;
-      if (deposit(x, y, r)) drop.extra = Math.max(drop.extra - r ** 3, 0);
-    }
-    drop.extra *= Math.exp(-dt / 12);
-
-    // Rain tops the screen back up.
-    const want = Math.round(config.scatter * a);
-    rainDue += dt * config.rain;
-    if (alive().length >= want) rainDue = 0;
-    while (rainDue >= 1) {
-      rainDue--;
-      scatter(1, 0);
-    }
-
-    // Landing drops swell in; removed ones shrink away; trail droplets dry up.
-    for (const d of drops) {
-      if (d.life !== undefined && !d.dying && (d.life -= dt) <= 0) d.dying = true;
-      d.grow = d.dying ? d.grow - dt * (d.life !== undefined ? 1.2 : 6) : Math.min(d.grow + dt * 5, 1);
-    }
-    drops = drops.filter((d) => !d.dying || d.grow > 0);
-
-    // Optics. Every drop sits on the same cover glass; its thickness is set
-    // so the cursor's drop (at its base size) magnifies `magnify`× at its
-    // apex, whose radius of curvature is a / (2 z0) for a dome of height a z0.
-    const phi = (Math.min(Math.max(config.angle, 5), 85) * Math.PI) / 180;
-    const z0 = Math.tan(phi / 2);
-    const depth = (r: number) => (r / (2 * z0)) * (1 - 1 / Math.max(config.magnify, 1.01)) / (1 - 1 / WATER);
-    const glass = Math.max(depth(config.size) - config.size * z0, 0);
     const sway = still ? 0 : Math.sin(time * 2.1) * 0.015 * Math.min(Math.abs(drop.spring), 1);
-    uniforms[0] = drop.x * a;
-    uniforms[1] = drop.y;
-    uniforms[2] = rc * (1 + sway);
-    uniforms[3] = 10;
-    // Largest first, so a crowded tile loses only the smallest drops.
-    const sized = drops
-      .map((d) => ({ d, r: d.r * Math.sin((Math.min(d.grow, 1) * Math.PI) / 2) }))
-      .filter((e) => e.r > 0)
-      .sort((x, y) => y.r - x.r)
-      .slice(0, MAX_DROPS - 1);
-    sized.forEach(({ d, r }, i) => uniforms.set([d.x * a, d.y, r, Math.round(d.flat * 10) + Math.min(d.seed, 0.999)], (i + 1) * 4));
 
-    const cols = Math.max(1, Math.round(TILE_ROWS * a)), rows = TILE_ROWS;
-    if (bins.length !== cols * rows * BIN) bins = new Uint16Array(cols * rows * BIN);
-    bins.fill(BIN_END);
-    const fill = new Uint8Array(cols * rows);
-    const bin = (id: number, x: number, y: number, reach: number) => {
-      const x0 = Math.max(Math.floor((x - reach / a) * cols), 0), x1 = Math.min(Math.floor((x + reach / a) * cols), cols - 1);
-      const y0 = Math.max(Math.floor((y - reach) * rows), 0), y1 = Math.min(Math.floor((y + reach) * rows), rows - 1);
-      for (let ty = y0; ty <= y1; ty++) {
-        for (let tx = x0; tx <= x1; tx++) {
-          const tile = ty * cols + tx;
-          if (fill[tile] < BIN) bins[(ty * cols + tx) * BIN + fill[tile]++] = id;
-        }
-      }
-    };
-    bin(0, drop.x, drop.y, rc * (1 + sway) * (2 + 2 * Math.abs(drop.stretch)));
-    // The streak, ending at the drop while it's still running. Near capacity
-    // its oldest end tapers off rather than vanishing.
-    const live = sinceStreak < 0.5 && streak.length;
-    const points = live ? [...streak, { ...streak[streak.length - 1], x: drop.x, y: drop.y, age: 0, cut: false }] : streak;
-    const crowded = points.length > MAX_TRAIL * 0.8;
-    const widths = points.map((s, i) => {
-      const smooth = (e0: number, e1: number, x: number) => {
-        const u = Math.min(Math.max((x - e0) / (e1 - e0), 0), 1);
-        return u * u * (3 - 2 * u);
-      };
-      const dry = s.age < STREAK_PINCH_TO
-        ? 1 - 0.3 * s.age / STREAK_PINCH_TO
-        : 0.7 * (1 - smooth(STREAK_PINCH_TO, STREAK_LIFE, s.age));
-      const pinch = smooth(STREAK_PINCH_FROM, STREAK_PINCH_TO, s.age) * s.neck;
-      const taper = crowded ? Math.min(1, (i + 1) / 8) : 1;
-      return s.w * dry * (1 - pinch) * taper;
+    water.draw({
+      beads: [],
+      lead: { x: drop.x, y: drop.y, r: config.size * (1 + sway), dirX: drop.dirX, dirY: drop.dirY, stretch: drop.stretch },
+      // A lamp hovers up and to the left of the drop, so its glint shifts as it moves.
+      lamp: [drop.x - 0.12, drop.y + 0.18, 0.35],
+      time,
     });
-    points.forEach((s, i) => streakData.set([s.x * a, s.y, widths[i], 0], i * 4));
-    for (let i = 0; i + 1 < points.length; i++) {
-      const s = points[i], e = points[i + 1];
-      const reach = Math.max(widths[i], widths[i + 1]) * 1.2;
-      if (e.cut || reach <= 0) continue;
-      bin(MAX_DROPS + i, (s.x + e.x) / 2, (s.y + e.y) / 2, dist(s.x, s.y, e.x, e.y) / 2 + reach);
-    }
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, streakTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, MAX_TRAIL, 1, 0, gl.RGBA, gl.FLOAT, streakData);
-    sized.forEach(({ d, r }, i) => bin(i + 1, d.x, d.y, r * 1.5)); // glints spill past the rim
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, binTex);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16UI, cols * BIN, rows, 0, gl.RED_INTEGER, gl.UNSIGNED_SHORT, bins);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
-
-    const fit = content.cover(pw, ph);
-    const px = canvas.clientHeight / pitch;
-    const lod = Math.log2(Math.max((content.height * fit[1]) / px, 1));
-    const spread = 0.0015 * config.dispersion;
-
-    program.use();
-    const u = program.uniforms;
-    gl.uniform1i(u.uContent, content.attach(0));
-    gl.uniform4f(u.uFit, fit[0], fit[1], fit[2], fit[3]);
-    gl.uniform1f(u.uLod, lod);
-    gl.uniform2f(u.uRes, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    gl.uniform1f(u.uAspect, a);
-    gl.uniform1f(u.uPx, px);
-    gl.uniform4fv(u['uDrops[0]'], uniforms);
-    gl.uniform1i(u.uBins, 1);
-    gl.uniform1f(u.uGlass, glass);
-    gl.uniform1i(u.uStreak, 2);
-    gl.uniform2f(u.uTiles, cols, rows);
-    gl.uniform2f(u.uDir, drop.dirX, drop.dirY);
-    gl.uniform1f(u.uStretch, drop.stretch);
-    gl.uniform2f(u.uContact, Math.sin(phi), Math.cos(phi));
-    gl.uniform3f(u.uIor, WATER - spread, WATER, WATER + spread * 1.4);
-    gl.uniform1i(u.uLayout, LAYOUTS[config.layout] ?? 0);
-    gl.uniform1f(u.uSensor, config.sensor * (gl.drawingBufferWidth / Math.max(canvas.clientWidth, 1)));
-    gl.uniform1f(u.uGrid, config.grid);
-    gl.uniform1f(u.uFocus, config.focus);
-    gl.uniform1f(u.uGloss, config.gloss);
-    // A lamp hovers up and to the left of the cursor's drop, so every
-    // drop is lit from its own angle and the glints swing as you move.
-    gl.uniform3f(u.uLamp, (drop.x - 0.12) * a, drop.y + 0.18, 0.35);
-    gl.uniform1f(u.uSize, config.size);
-    gl.uniform1f(u.uTime, time);
-    blit(null);
   });
 
   return {
     config,
-    setSource,
-    wipe() {
-      for (const d of drops) d.dying = true;
-      drop.extra = 0;
-      streak = [];
-    },
+    setSource: water.setSource,
     destroy() {
       ac.abort();
       stage.destroy(); // losing the context frees every GL object with it

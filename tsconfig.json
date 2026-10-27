@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["packages/*/src", "cursors/*/src", "apps/*/src"]
+  "include": ["packages/*/src", "cursors/*/src", "filters/*/src", "apps/*/src"]
 }

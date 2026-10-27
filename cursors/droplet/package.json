@@ -1,10 +1,13 @@
 {
   "name": "@spectra/droplet",
   "version": "0.1.0",
-  "description": "Water on a phone screen: the cursor's drop magnifies the panel into RGB subpixels; smaller drops swirl with moiré rainbows.",
+  "description": "A drop of water on a phone screen, carried by the cursor: it magnifies the panel into RGB subpixels and fringes into color at the rim.",
   "type": "module",
   "license": "MIT",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./water": "./src/water.ts"
+  },
   "dependencies": {
     "@spectra/core": "workspace:*"
   }

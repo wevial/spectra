@@ -25,6 +25,7 @@
         "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
         "@spectra/phosphor": "workspace:*",
+        "@spectra/rain": "workspace:*",
         "@spectra/riso": "workspace:*",
         "lil-gui": "^0.20.0",
       },
@@ -114,6 +115,14 @@
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
+      },
+    },
+    "filters/rain": {
+      "name": "@spectra/rain",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+        "@spectra/droplet": "workspace:*",
       },
     },
     "packages/core": {
@@ -337,6 +346,8 @@
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
 
     "@spectra/phosphor": ["@spectra/phosphor@workspace:cursors/phosphor"],
+
+    "@spectra/rain": ["@spectra/rain@workspace:filters/rain"],
 
     "@spectra/riso": ["@spectra/riso@workspace:cursors/riso"],
 

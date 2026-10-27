@@ -1,0 +1,12 @@
+{
+  "name": "@spectra/rain",
+  "version": "0.1.0",
+  "description": "A phone screen beaded with water: drops lens the image into moiré rainbows and upside-down glimpses, and coalesce as new rain lands.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*",
+    "@spectra/droplet": "workspace:*"
+  }
+}

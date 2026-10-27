@@ -1,10 +1,8 @@
 export const MAX_DROPS = 128;
-/** Points along the wet streak a moving drop leaves (ids after the drops). */
-export const MAX_TRAIL = 256;
-/** Drops and streak segments listed per screen tile; the smallest drops are dropped past this. */
-export const BIN = 16;
+/** Drops listed per screen tile; the smallest are dropped past this. */
+export const BIN = 12;
 /** Marks the end of a tile's list. */
-export const BIN_END = 65535;
+export const BIN_END = 255;
 
 // A phone screen with water on it. The panel is a grid of emitters (RGB
 // stripes, or a diamond pentile), far too fine to see until a drop sits on
@@ -16,10 +14,12 @@ export const BIN_END = 65535;
 // which magnifies the subpixels. The landing point is traced per color channel with
 // water's (exaggerated) dispersion, so rims fringe into rainbows.
 //
-// Every drop sits on the same glass, so the optics depend on its size: the
-// big one under the cursor magnifies `magnify`× at its apex, smaller drops
+// Every drop sits on the same glass, so the optics depend on its size: one
+// of reference size magnifies `magnify`× at its apex, smaller drops
 // overshoot focus and show an inverted image, and tiny ones shrink the panel
-// to a pale blur.
+// to a pale blur. Drop 0, when there is one, is carried by the cursor: it
+// stretches as it moves, and piles up taller (keeping its magnification) as
+// it grows.
 // Where subpixels are too fine to resolve, they beat against a virtual camera
 // sensor into the soft rainbow moiré of macro photos (see beat()).
 export const DROPLET = /* glsl */ `#version 300 es
@@ -33,10 +33,9 @@ uniform float uAspect;
 uniform float uPx;          // panel pixels per height unit
 uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, flatness×10 + shape seed
 uniform float uGlass;       // cover glass thickness, height units
-uniform highp sampler2D uStreak; // streak points (one texel each): center, half-width (negative: a new streak starts here)
 uniform highp usampler2D uBins; // per tile, the drops that reach it (255: end of list)
 uniform vec2 uTiles;
-uniform vec2 uDir;          // drop 0 (the cursor's) heading, and how far it's stretched
+uniform vec2 uDir;          // drop 0's heading, and how far it's stretched
 uniform float uStretch;
 uniform vec2 uContact;      // sin, cos of the contact angle
 uniform vec3 uIor;          // refractive index per channel
@@ -45,8 +44,10 @@ uniform float uSensor;      // camera sensor pitch, device px
 uniform float uGrid;
 uniform float uFocus;
 uniform float uGloss;
-uniform vec3 uLamp;         // a lamp hovering near the cursor: position (height units), height
-uniform float uSize;        // the cursor drop's base radius
+uniform float uSoften;      // 0..1: subpixels glow into each other (calmer up close)
+uniform float uSparkle;     // strength of the star glint on big drops
+uniform vec3 uLamp;         // the lamp: position (height units), height above the glass
+uniform float uSize;        // reference drop radius
 uniform float uTime;
 out vec4 fragColor;
 
@@ -134,6 +135,7 @@ vec3 panel(vec2 s, vec2 dx, vec2 dy, float blur) {
     float g = cover(length(q - 0.5) - 0.17, f);
     L = vec3(corner.r * diamond * (1.0 - red) * 8.65, c.g * g * 11.0, corner.b * diamond * red * 8.65);
   }
+  L = mix(L, content(s), uSoften); // light bleeding between subpixels
   return far > 0.0 ? mix(L, beat(s, dx, dy, blur), far) : L;
 }
 
@@ -181,7 +183,7 @@ vec3 glint(vec2 p, vec4 d) {
   float thin = 0.006 + 0.5 / (uRes.y * d.z); // at least ~half a device px
   float star = exp(-au.y / thin - au.x * 5.0) + exp(-au.x / thin - au.y * 5.0);
   star *= 1.2 * (0.8 + 0.2 * sin(uTime * 3.1 + d.y * 17.0)); // twinkle
-  return vec3(1.0, 0.97, 0.9) * (core + star * big) * uGloss * (0.3 + 0.7 * L.w);
+  return vec3(1.0, 0.97, 0.9) * (core + star * big * uSparkle) * uGloss * (0.3 + 0.7 * L.w);
 }
 
 /**
@@ -215,69 +217,41 @@ void main() {
   float peak = 0.0, a = 1.0;      // blended dome height and radius
   vec2 center = p;
   vec3 shine = vec3(0.0);
-  // The streak's segments are combined with a plain max, so their joints are
-  // seamless; the streak as a whole then blends with the drops.
-  float sh = -1e3, sH = 0.0, sr = 1.0;
-  vec2 sgr = vec2(0.0), sc = p;
   ivec2 tile = ivec2(min(vUv * uTiles, uTiles - 1.0));
   for (int j = 0; j < ${BIN}; j++) {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
     if (id == ${BIN_END}u) break;
     int i = int(id);
-    float H, hi;
-    vec2 g, c;
-    float r;
-    if (i >= ${MAX_DROPS}) {
-      // A segment of the wet streak: a low ridge along the drop's path. Its
-      // width is interpolated by area, so where a point has pinched to
-      // nothing the pieces either side end in rounded tips.
-      int k = i - ${MAX_DROPS};
-      vec4 A = texelFetch(uStreak, ivec2(k, 0), 0), B = texelFetch(uStreak, ivec2(k + 1, 0), 0);
-      vec2 ab = B.xy - A.xy;
-      float t = clamp(dot(p - A.xy, ab) / max(dot(ab, ab), 1e-10), 0.0, 1.0);
-      c = A.xy + ab * t;
-      vec2 o = p - c;
-      r = sqrt(mix(A.z * A.z, B.z * B.z, t));
-      if (r < 1e-5 || dot(o, o) >= 1.44 * r * r) continue;
-      H = r * z0 * 0.18; // a wet track is much flatter than a drop: a weak lens
-      hi = H * (1.0 - dot(o, o) / (r * r));
-      if (hi > sh) {
-        sh = hi; sgr = -2.0 * H * o / (r * r); sH = H; sr = r; sc = c;
-      }
-      continue;
+    vec4 d = uDrops[i];
+    vec2 o = p - d.xy;
+    float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
+    if (dot(o, o) >= reach * reach) continue;
+    shine += glint(p, d);
+    // The cursor's drop piles up taller as it takes on water, keeping the
+    // curvature at its apex (so its magnification) as it grows.
+    float H = i == 0 ? d.z * d.z / uSize * z0 : d.z * z0 * floor(d.w) / 10.0;
+    float hi;
+    vec2 g;
+    if (i == 0) {
+      // The moving drop stretches along its heading, with a tail behind.
+      vec2 perp = vec2(-uDir.y, uDir.x);
+      float tail = dot(o, uDir) < 0.0 ? 1.0 + max(uStretch, 0.0) * 0.8 : 1.0;
+      vec2 J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
+      vec2 q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
+      hi = H * (1.0 - dot(q, q));
+      vec2 gf = -2.0 * H * q * J / d.z;
+      g = gf.x * uDir + gf.y * perp;
     } else {
-      vec4 d = uDrops[i];
-      vec2 o = p - d.xy;
-      float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
-      if (dot(o, o) >= reach * reach) continue;
-      shine += glint(p, d);
-      // The cursor's drop piles up taller as it takes on water, keeping the
-      // curvature at its apex (so its magnification) as it grows.
-      H = i == 0 ? d.z * d.z / uSize * z0 : d.z * z0 * floor(d.w) / 10.0;
-      c = d.xy;
-      r = d.z;
-      if (i == 0) {
-        // The moving drop stretches along its heading, with a tail behind.
-        vec2 perp = vec2(-uDir.y, uDir.x);
-        float tail = dot(o, uDir) < 0.0 ? 1.0 + max(uStretch, 0.0) * 0.8 : 1.0;
-        vec2 J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
-        vec2 q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
-        hi = H * (1.0 - dot(q, q));
-        vec2 gf = -2.0 * H * q * J / d.z;
-        g = gf.x * uDir + gf.y * perp;
-      } else {
-        // Drops pin to the glass unevenly, so bigger ones aren't quite round.
-        float seed = fract(d.w) * 97.0;
-        float th = atan(o.y, o.x);
-        float lumpy = smoothstep(0.15, 0.6, d.z / uSize);
-        float rr = d.z * (1.0 + lumpy * (0.08 * sin(2.0 * th + seed) + 0.05 * sin(3.0 * th + seed * 1.7)));
-        hi = H * (1.0 - dot(o, o) / (rr * rr));
-        g = -2.0 * H * o / (rr * rr);
-      }
+      // Drops pin to the glass unevenly, so bigger ones aren't quite round.
+      float seed = fract(d.w) * 97.0;
+      float th = atan(o.y, o.x);
+      float lumpy = smoothstep(0.15, 0.6, d.z / uSize);
+      float rr = d.z * (1.0 + lumpy * (0.08 * sin(2.0 * th + seed) + 0.05 * sin(3.0 * th + seed * 1.7)));
+      hi = H * (1.0 - dot(o, o) / (rr * rr));
+      g = -2.0 * H * o / (rr * rr);
     }
-    fuse(h, grad, peak, a, center, hi, g, H, r, c);
+    fuse(h, grad, peak, a, center, hi, g, H, d.z, d.xy);
   }
-  if (sh > -1e2) fuse(h, grad, peak, a, center, sh, sgr, sH, sr, sc);
   vec3 N = normalize(vec3(-grad, 1.0));
   float D = uGlass + max(h, 0.0);
   float sd = h / max(length(grad), 1e-5); // distance in from the edge, roughly

@@ -20,6 +20,7 @@
     "@spectra/mycelium": "workspace:*",
     "@spectra/nebula": "workspace:*",
     "@spectra/phosphor": "workspace:*",
+    "@spectra/rain": "workspace:*",
     "@spectra/riso": "workspace:*",
     "lil-gui": "^0.20.0"
   },
