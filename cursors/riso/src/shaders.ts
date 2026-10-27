@@ -75,7 +75,11 @@ void main() {
     float aa = max(fwidth(t), 0.02);
     float cover = smoothstep(t - aa, t + aa, amount);
     cover *= 1.0 - step(1.0 - 0.02 * uGrain, speck) * 0.8;
-    float starve = 1.0 - uGrain * 0.18 * smoothstep(0.35, 0.85, fbm(vec2(px.y / uRes.y * 3.0 + fi * 5.0, fi)));
+    // Starved bands run across the sheet, so they only depend on y: two
+    // sines per ink are plenty (and far cheaper than noise per pixel).
+    float y = vUv.y * 6.2831853;
+    float band = 0.5 + 0.3 * sin(y * (2.3 + fi * 0.7) + fi * 2.1) + 0.2 * sin(y * (5.1 + fi * 1.3) + fi * 4.7);
+    float starve = 1.0 - uGrain * 0.18 * smoothstep(0.45, 0.9, band);
 
     // Overprint: inks multiply.
     col *= mix(vec3(1.0), uInk[i], cover * starve * 0.94);
