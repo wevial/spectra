@@ -17,6 +17,7 @@
         "@spectra/blackhole": "workspace:*",
         "@spectra/core": "workspace:*",
         "@spectra/dither": "workspace:*",
+        "@spectra/filings": "workspace:*",
         "@spectra/glitch": "workspace:*",
         "@spectra/lens": "workspace:*",
         "@spectra/mycelium": "workspace:*",
@@ -44,6 +45,13 @@
     },
     "cursors/dither": {
       "name": "@spectra/dither",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/filings": {
+      "name": "@spectra/filings",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
@@ -287,6 +295,8 @@
     "@spectra/core": ["@spectra/core@workspace:packages/core"],
 
     "@spectra/dither": ["@spectra/dither@workspace:cursors/dither"],
+
+    "@spectra/filings": ["@spectra/filings@workspace:cursors/filings"],
 
     "@spectra/gallery": ["@spectra/gallery@workspace:apps/gallery"],
 

@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/filings",
+  "version": "0.1.0",
+  "description": "Iron filings on paper over a magnet you carry with the cursor; they swing into field lines and stay put. Click to pin magnets.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

@@ -23,6 +23,7 @@ export default defineConfig({
         nebula: page('nebula/index.html'),
         aurora: page('aurora/index.html'),
         riso: page('riso/index.html'),
+        filings: page('filings/index.html'),
       },
     },
   },

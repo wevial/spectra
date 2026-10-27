@@ -127,6 +127,11 @@ body {
     linear-gradient(#5a7fd0, #ff7eb6 55%, #ffc27a 75%),
     #f4efe4;
 }
+.filings-fallback {
+  background:
+    repeating-radial-gradient(ellipse at 50% 50%, rgba(41, 41, 46, 0.25) 0 1px, transparent 1px 9px),
+    #eee8db;
+}
 .glitch-fallback {
   background:
     linear-gradient(90deg, transparent 8%, #ff3b3b 14%, #ffd23b 18%, #3bff7a 21%, #3bc8ff 24%, #8a3bff 28%, transparent 34%),

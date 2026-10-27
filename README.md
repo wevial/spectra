@@ -14,6 +14,7 @@ WebGL2 cursor effects and image filters, plus a gallery for testing them.
 | [`cursors/nebula`](cursors/nebula) | A fluid-sim nebula you part with the mouse; it always heals back |
 | [`cursors/aurora`](cursors/aurora) | Paint the northern lights: your trail becomes a curtain of rising, shimmering rays over a lake |
 | [`cursors/riso`](cursors/riso) | Any image as a risograph print: spot-ink halftones on paper; the cursor knocks the layers out of register |
+| [`cursors/filings`](cursors/filings) | Iron filings swing into field lines around a magnet you carry; click to pin magnets and combine fields |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
 is live: change a field and the next frame uses it.
