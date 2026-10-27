@@ -3,8 +3,9 @@
 Water on a phone screen. The cursor carries a big drop that magnifies the
 panel into its red, green and blue subpixels. The screen around it is beaded
 with smaller drops that swirl with moiré rainbows or show the screen upside
-down. The big drop swallows the drops it runs over, sheds the extra water
-behind it as it moves, and wobbles when it stops. Click to flick a spray of
+down. Drops it touches merge into it, drawn in as their water joins it. As
+it moves it leaves a trail: fine droplets that soon evaporate, plus bigger
+ones while it carries swallowed water. It wobbles when it stops. Click to flick a spray of
 new drops. Shows any image, canvas or video, or a lock screen by default.
 
 ```js
@@ -38,9 +39,10 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
   shift as the drops move.
 - **Surface.** Fresnel reflection of a dim room and a soft sunlit window,
   a rim that bends away from the light, and shallow depth of field. Each drop
-  mirrors the sun where its normal is halfway between sun and eye, drawn as a
-  hot core with bloom and, on big drops, a twinkling four-point star. Moving
-  the cursor tilts the light a little, so every glint slides.
+  mirrors a lamp hovering by the cursor where its normal is halfway between
+  lamp and eye, drawn as a hot core with bloom and, on big drops, a twinkling
+  four-point star. Every drop sees the lamp from its own angle, so glints
+  swing around the drops as you move, and far drops catch it on the rim.
 - **Cost.** Drops are binned into screen tiles (a small integer texture), so
   each pixel only checks the drops near it.
 

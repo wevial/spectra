@@ -63,6 +63,8 @@ interface Drop {
   r: number;      // radius, fraction of height
   grow: number;   // 0..1 as it lands, back to 0 as it's removed
   dying: boolean;
+  merging?: boolean; // being drawn into the cursor's drop
+  life?: number;     // seconds left before a trail droplet evaporates
 }
 
 const WATER = 1.333;
@@ -108,9 +110,22 @@ export function mount(
     if (alive().some((d) => dist(x, y, d.x, d.y) < (r + d.r) * 1.15)) return false;
     if (dist(x, y, drop.x, drop.y) < r + radius() * 1.2) return false;
     drops.push({ x, y, r, grow, dying: false });
-    // Over capacity: the oldest dry off.
+    trim();
+    return true;
+  }
+  /** Over capacity: the oldest dry off, trail droplets first. */
+  function trim() {
     const live = alive();
-    for (let i = 0; i < live.length - (MAX_DROPS - 1); i++) live[i].dying = true;
+    const over = live.length - (MAX_DROPS - 1);
+    if (over <= 0) return;
+    const order = [...live.filter((d) => d.life !== undefined), ...live.filter((d) => d.life === undefined)];
+    for (let i = 0; i < over; i++) order[i].dying = true;
+  }
+  /** Leave a droplet behind the cursor's drop (no spacing rules: it's a trail). */
+  function deposit(x: number, y: number, r: number, life?: number) {
+    if (alive().some((d) => dist(x, y, d.x, d.y) < (r + d.r) * 0.9)) return false;
+    drops.push({ x, y, r, grow: 0.4, dying: false, life });
+    trim();
     return true;
   }
   const mistSize = () => config.size * (0.04 + 0.5 * Math.random() ** 2);
@@ -212,28 +227,54 @@ export function mount(
       drop.stretch = Math.max(drop.stretch + drop.spring * dt, -0.35);
     }
 
-    // Swallow drops it runs over.
+    // Drops it touches merge: drawn into it as their water joins it.
     let rc = radius();
     for (const d of drops) {
-      if (d.dying || d.grow < 1 || dist(drop.x, drop.y, d.x, d.y) > rc + d.r * 0.2) continue;
-      d.dying = true;
-      d.grow = 0;
-      drop.extra += d.r ** 3;
-      drop.spring += 2;
-      rc = radius();
+      if (d.dying || d.merging || d.grow < 1) continue;
+      if (dist(drop.x, drop.y, d.x, d.y) > rc * 0.95 + d.r) continue;
+      d.merging = true;
+      drop.spring = Math.min(drop.spring + 1.5, 6);
     }
-    // Shed the extra behind it while it moves; whatever's left slowly dries.
-    drop.travel += moved;
-    if (drop.extra > 0 && drop.travel > rc * 0.7 && drop.speed > 0.1) {
-      drop.travel = 0;
-      const r = Math.min(Math.cbrt(drop.extra), config.size * 0.4) * (0.5 + 0.5 * Math.random());
-      const back = rc * (1.25 + 0.35 * Math.max(drop.stretch, 0)) + r * 1.3;
-      const side = (Math.random() - 0.5) * rc * 0.6;
-      if (place(drop.x + (-drop.dirX * back - drop.dirY * side) / a, drop.y - drop.dirY * back + drop.dirX * side, r, 0.3)) {
-        drop.extra = Math.max(drop.extra - r ** 3, 0);
+    for (const d of drops) {
+      if (!d.merging || d.dying) continue;
+      const pull = 1 - Math.exp(-dt * 10);
+      d.x += (drop.x - d.x) * pull;
+      d.y += (drop.y - d.y) * pull;
+      const r = d.r * Math.exp(-dt * 8);
+      drop.extra += d.r ** 3 - r ** 3;
+      d.r = r;
+      if (dist(drop.x, drop.y, d.x, d.y) + d.r < rc * 0.8 || d.r < config.size * 0.01) {
+        drop.extra += d.r ** 3;
+        d.dying = true;
+        d.grow = 0;
       }
     }
-    drop.extra *= Math.exp(-dt / 30);
+    rc = radius();
+
+    // A moving drop leaves a trail: a steady dribble of fine droplets that
+    // soon evaporate, plus bigger ones while it carries swallowed water.
+    drop.travel += moved;
+    const behind = (r: number, spread: number): [number, number] => {
+      const back = rc * (1 + 0.3 * Math.max(drop.stretch, 0)) + r * 1.3;
+      const side = (Math.random() - 0.5) * rc * spread;
+      return [drop.x + (-drop.dirX * back - drop.dirY * side) / a, drop.y - drop.dirY * back + drop.dirX * side];
+    };
+    // Carrying more than about half again its own size, it sheds hard.
+    const heavy = drop.extra > 2.4 * config.size ** 3;
+    if (drop.travel > rc * (heavy ? 0.12 : 0.25) && drop.speed > 0.08 && !still) {
+      drop.travel = 0;
+      const shed = drop.extra > (config.size * 0.12) ** 3 && (heavy || Math.random() < 0.5);
+      if (shed) {
+        const r = Math.min(Math.cbrt(drop.extra) * 0.8, config.size * 0.35) * (0.5 + 0.5 * Math.random());
+        const [x, y] = behind(r, 0.8);
+        if (deposit(x, y, r)) drop.extra = Math.max(drop.extra - r ** 3, 0);
+      } else {
+        const r = config.size * (0.04 + 0.1 * Math.random() ** 2);
+        const [x, y] = behind(r, 1.4);
+        deposit(x, y, r, 4 + Math.random() * 6);
+      }
+    }
+    drop.extra *= Math.exp(-dt / 12);
 
     // Rain tops the screen back up.
     const want = Math.round(config.scatter * a);
@@ -244,8 +285,11 @@ export function mount(
       scatter(1, 0);
     }
 
-    // Landing drops swell in; removed ones shrink away.
-    for (const d of drops) d.grow = d.dying ? d.grow - dt * 6 : Math.min(d.grow + dt * 5, 1);
+    // Landing drops swell in; removed ones shrink away; trail droplets dry up.
+    for (const d of drops) {
+      if (d.life !== undefined && !d.dying && (d.life -= dt) <= 0) d.dying = true;
+      d.grow = d.dying ? d.grow - dt * (d.life !== undefined ? 1.2 : 6) : Math.min(d.grow + dt * 5, 1);
+    }
     drops = drops.filter((d) => !d.dying || d.grow > 0);
 
     // Optics. Every drop sits on the same cover glass; its thickness is set
@@ -317,11 +361,9 @@ export function mount(
     gl.uniform1f(u.uGrid, config.grid);
     gl.uniform1f(u.uFocus, config.focus);
     gl.uniform1f(u.uGloss, config.gloss);
-    // The light sits up and to the left; moving the drop tilts it a little,
-    // like tilting a phone in the sun, so every glint slides.
-    const sx = -0.4 + 0.25 * (drop.x - 0.5), sy = 0.5 + 0.25 * (drop.y - 0.5);
-    const sl = Math.hypot(sx, sy, 1);
-    gl.uniform3f(u.uSun, sx / sl, sy / sl, 1 / sl);
+    // A lamp hovers up and to the left of the cursor's drop, so every
+    // drop is lit from its own angle and the glints swing as you move.
+    gl.uniform3f(u.uLamp, (drop.x - 0.12) * a, drop.y + 0.18, 0.35);
     gl.uniform1f(u.uSize, config.size);
     gl.uniform1f(u.uTime, time);
     blit(null);

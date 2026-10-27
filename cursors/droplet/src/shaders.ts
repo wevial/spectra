@@ -37,7 +37,7 @@ uniform float uSensor;      // camera sensor pitch, device px
 uniform float uGrid;
 uniform float uFocus;
 uniform float uGloss;
-uniform vec3 uSun;          // toward the light (unit)
+uniform vec3 uLamp;         // a lamp hovering near the cursor: position (height units), height
 uniform float uSize;        // the cursor drop's base radius
 uniform float uTime;
 out vec4 fragColor;
@@ -135,11 +135,17 @@ vec2 land(vec3 N, float n, float D) {
   return T.xy / -T.z * D;
 }
 
-/** What the drop reflects: a dim room and a bright, soft-edged window. */
-vec3 room(vec3 R) {
-  // Window plane coordinates around the sun (a gnomonic projection, so the
+/** Direction from a drop at c toward the lamp, and how strongly it's lit. */
+vec4 lamp(vec2 c) {
+  vec3 v = vec3(uLamp.xy - c, uLamp.z);
+  return vec4(normalize(v), uLamp.z * uLamp.z / dot(v, v));
+}
+
+/** What a drop lit from L reflects: a dim room and a bright, soft-edged window around the lamp. */
+vec3 room(vec3 R, vec3 L) {
+  // Window plane coordinates around the lamp (a gnomonic projection, so the
   // drop's curvature bends the window's outline).
-  vec2 w = R.xy / max(R.z, 0.05) - uSun.xy / uSun.z;
+  vec2 w = R.xy / max(R.z, 0.05) - L.xy / max(L.z, 0.05);
   float pane = smoothstep(0.08, -0.06, box(w - vec2(0.04, -0.02), vec2(0.2, 0.27), 0.08));
   float glow = 0.6 + 0.4 * smoothstep(-0.3, 0.3, w.y - 0.4 * w.x); // daylight falls off down the window
   return vec3(1.0, 0.97, 0.92) * pane * glow * 3.0 + vec3(0.2, 0.22, 0.26) * (0.6 + 0.4 * R.z);
@@ -152,8 +158,13 @@ vec3 room(vec3 R) {
  */
 vec3 glint(vec2 p, vec4 d) {
   float R = 1.0 / uContact.x;
-  vec3 H = normalize(uSun + vec3(0.0, 0.0, 1.0));
-  vec2 g = (p - d.xy) / d.z - H.xy * R; // from the highlight, drop radii
+  vec4 L = lamp(d.xy);
+  vec3 H = normalize(L.xyz + vec3(0.0, 0.0, 1.0));
+  // Past the cap's steepest slope the mirror point would leave the drop:
+  // the lamp is low, and it catches the rim instead.
+  vec2 at = H.xy * R;
+  at *= min(1.0, 0.94 / max(length(at), 1e-4));
+  vec2 g = (p - d.xy) / d.z - at; // from the highlight, drop radii
   float big = smoothstep(0.3, 0.8, d.z / uSize);
   float core = exp(-dot(g, g) / 0.002) * 4.0 + exp(-dot(g, g) / 0.03) * 0.5;
   float spin = 0.35 + 0.08 * sin(uTime * 0.7 + d.x * 9.0);
@@ -162,7 +173,7 @@ vec3 glint(vec2 p, vec4 d) {
   float thin = 0.006 + 0.5 / (uRes.y * d.z); // at least ~half a device px
   float star = exp(-au.y / thin - au.x * 5.0) + exp(-au.x / thin - au.y * 5.0);
   star *= 1.2 * (0.8 + 0.2 * sin(uTime * 3.1 + d.y * 17.0)); // twinkle
-  return vec3(1.0, 0.97, 0.9) * (core + star * big) * uGloss;
+  return vec3(1.0, 0.97, 0.9) * (core + star * big) * uGloss * (0.3 + 0.7 * L.w);
 }
 
 void main() {
@@ -178,6 +189,7 @@ void main() {
   float R = 1.0 / uContact.x;          // sphere radius, in drop radii
   float z0 = R - R * uContact.y;        // cap height at the center
   vec3 shine = vec3(0.0);
+  vec4 lit = vec4(0.0, 0.0, 1.0, 1.0); // lamp as seen from the drop over this point
   ivec2 tile = ivec2(min(vUv * uTiles, uTiles - 1.0));
   for (int j = 0; j < ${BIN}; j++) {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
@@ -210,6 +222,7 @@ void main() {
     a = d.z;
     off = o;
     held = i == 0;
+    lit = lamp(d.xy);
     D = d.w - (z0 * d.z - z);
   }
 
@@ -240,12 +253,12 @@ void main() {
     vec2 sb = (p + lb) * uPx;
     // Shallow depth of field: the panel softens toward the rim.
     float blur = uFocus * smoothstep(0.3, 1.0, rho);
-    vec3 lit = vec3(panel(sr, dx, dy, blur).r, panel(sg, dx, dy, blur).g, panel(sb, dx, dy, blur).b);
+    vec3 emit = vec3(panel(sr, dx, dy, blur).r, panel(sg, dx, dy, blur).g, panel(sb, dx, dy, blur).b);
 
     float F = 0.02 + 0.98 * pow(1.0 - N.z, 5.0);
-    col = lit * (1.0 - F);
+    col = emit * (1.0 - F);
     col *= 1.0 - 0.6 * smoothstep(0.7, 1.0, rho) * smoothstep(0.7, 1.0, rho); // the rim bends away from the light
-    col += room(reflect(vec3(0.0, 0.0, -1.0), N)) * F * uGloss * 6.0;
+    col += room(reflect(vec3(0.0, 0.0, -1.0), N), lit.xyz) * F * uGloss * 6.0 * (0.4 + 0.6 * lit.w);
     if (wetness < 1.0) col = mix(screen(s, f0), col, wetness);
   }
 
