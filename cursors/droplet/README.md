@@ -3,7 +3,8 @@
 Water on a phone screen. The cursor carries a big drop that magnifies the
 panel into its red, green and blue subpixels. The screen around it is beaded
 with smaller drops that swirl with moiré rainbows or show the screen upside
-down. Drops it touches merge into it, drawn in as their water joins it. As
+down. Drops that touch coalesce: a neck forms, the smaller drains into the
+bigger, and the blob lurches toward it before rounding out. As
 it moves it leaves a trail: fine droplets that soon evaporate, plus bigger
 ones while it carries swallowed water. It wobbles when it stops. Click to flick a spray of
 new drops. Shows any image, canvas or video, or a lock screen by default.
@@ -25,8 +26,10 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
 - **Panel.** The content is sampled once per panel pixel (`pixel` CSS px),
   then split into subpixel shapes that each emit one channel. That's the
   same light, concentrated, so it averages back to the image from afar.
-- **Drops.** Each drop is a spherical cap on cover glass above the pixels: a
-  plano-convex lens. View rays refract at its surface and land on the panel,
+- **Water.** One surface over cover glass above the pixels. Each drop is a
+  low dome with a slightly lumpy, pinned outline, and neighbours blend through
+  a smooth max sized to the smaller dome, so drops fuse only once they touch.
+  Each dome is a plano-convex lens. View rays refract at its surface and land on the panel,
   traced per channel with exaggerated dispersion. The glass thickness is set
   so the cursor's drop magnifies `magnify`×. Smaller drops on the same glass
   overshoot focus, so they invert and shrink the image. The cursor's drop

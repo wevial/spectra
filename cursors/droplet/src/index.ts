@@ -63,7 +63,10 @@ interface Drop {
   r: number;      // radius, fraction of height
   grow: number;   // 0..1 as it lands, back to 0 as it's removed
   dying: boolean;
-  merging?: boolean; // being drawn into the cursor's drop
+  seed: number;      // 0..1, shapes its outline
+  flat: number;      // dome height relative to a full drop, 0.1..1
+  merging?: boolean; // flowing into the cursor's drop
+  into?: Drop;       // flowing into this resting drop
   life?: number;     // seconds left before a trail droplet evaporates
 }
 
@@ -109,7 +112,7 @@ export function mount(
   function place(x: number, y: number, r: number, grow = 1) {
     if (alive().some((d) => dist(x, y, d.x, d.y) < (r + d.r) * 1.15)) return false;
     if (dist(x, y, drop.x, drop.y) < r + radius() * 1.2) return false;
-    drops.push({ x, y, r, grow, dying: false });
+    drops.push({ x, y, r, grow, dying: false, seed: Math.random(), flat: 1 });
     trim();
     return true;
   }
@@ -122,9 +125,9 @@ export function mount(
     for (let i = 0; i < over; i++) order[i].dying = true;
   }
   /** Leave a droplet behind the cursor's drop (no spacing rules: it's a trail). */
-  function deposit(x: number, y: number, r: number, life?: number) {
+  function deposit(x: number, y: number, r: number, life?: number, flat = 1) {
     if (alive().some((d) => dist(x, y, d.x, d.y) < (r + d.r) * 0.9)) return false;
-    drops.push({ x, y, r, grow: 0.4, dying: false, life });
+    drops.push({ x, y, r, grow: 0.4, dying: false, life, seed: Math.random(), flat });
     trim();
     return true;
   }
@@ -227,24 +230,52 @@ export function mount(
       drop.stretch = Math.max(drop.stretch + drop.spring * dt, -0.35);
     }
 
-    // Drops it touches merge: drawn into it as their water joins it.
+    // Coalescence. Drops that touch the cursor's drop, or resting drops that
+    // touch each other, flow together: the smaller drains into the bigger,
+    // and the joined water shifts toward it, so a neck forms (the shader's
+    // smooth union) and the blob lurches, then rounds out.
     let rc = radius();
     for (const d of drops) {
-      if (d.dying || d.merging || d.grow < 1) continue;
-      if (dist(drop.x, drop.y, d.x, d.y) > rc * 0.95 + d.r) continue;
+      if (d.dying || d.merging || d.into || d.grow < 1) continue;
+      if (dist(drop.x, drop.y, d.x, d.y) > rc + d.r * 0.9) continue;
       d.merging = true;
-      drop.spring = Math.min(drop.spring + 1.5, 6);
+      drop.spring = Math.min(drop.spring + 1, 5);
+    }
+    const resting = drops.filter((d) => !d.dying && !d.merging && !d.into && d.grow >= 1 && d.life === undefined);
+    for (let i = 0; i < resting.length; i++) {
+      for (let j = i + 1; j < resting.length; j++) {
+        const u = resting[i], v = resting[j];
+        if (u.into || v.into || dist(u.x, u.y, v.x, v.y) > (u.r + v.r) * 0.95) continue;
+        if (u.r < v.r) u.into = v;
+        else v.into = u;
+      }
     }
     for (const d of drops) {
-      if (!d.merging || d.dying) continue;
-      const pull = 1 - Math.exp(-dt * 10);
-      d.x += (drop.x - d.x) * pull;
-      d.y += (drop.y - d.y) * pull;
-      const r = d.r * Math.exp(-dt * 8);
-      drop.extra += d.r ** 3 - r ** 3;
+      if (d.dying || !(d.merging || d.into)) continue;
+      const target = d.merging ? { x: drop.x, y: drop.y, r: rc } : d.into!;
+      if (d.into?.dying) { d.into = undefined; continue; }
+      const k = 1 - Math.exp(-dt * 4);
+      d.x += (target.x - d.x) * k;
+      d.y += (target.y - d.y) * k;
+      const r = d.r * Math.exp(-dt * 4);
+      const flow = d.r ** 3 - r ** 3;
       d.r = r;
-      if (dist(drop.x, drop.y, d.x, d.y) + d.r < rc * 0.8 || d.r < config.size * 0.01) {
-        drop.extra += d.r ** 3;
+      const share = flow / (target.r ** 3 + flow);
+      if (d.merging) {
+        drop.extra += flow;
+        drop.x += (d.x - drop.x) * share;
+        drop.y += (d.y - drop.y) * share;
+        rc = radius();
+      } else {
+        const t = d.into!;
+        t.x += (d.x - t.x) * share;
+        t.y += (d.y - t.y) * share;
+        t.r = Math.cbrt(t.r ** 3 + flow);
+      }
+      const tr = d.merging ? rc : d.into!.r;
+      if (dist(target.x, target.y, d.x, d.y) + d.r < tr * 0.75 || d.r < config.size * 0.015) {
+        if (d.merging) drop.extra += d.r ** 3;
+        else d.into!.r = Math.cbrt(d.into!.r ** 3 + d.r ** 3);
         d.dying = true;
         d.grow = 0;
       }
@@ -271,7 +302,7 @@ export function mount(
       } else {
         const r = config.size * (0.04 + 0.1 * Math.random() ** 2);
         const [x, y] = behind(r, 1.4);
-        deposit(x, y, r, 4 + Math.random() * 6);
+        deposit(x, y, r, 4 + Math.random() * 6, 0.6);
       }
     }
     drop.extra *= Math.exp(-dt / 12);
@@ -293,25 +324,24 @@ export function mount(
     drops = drops.filter((d) => !d.dying || d.grow > 0);
 
     // Optics. Every drop sits on the same cover glass; its thickness is set
-    // so the cursor's drop (at its base size) magnifies `magnify`×. The
-    // cursor's drop keeps that magnification as it grows.
+    // so the cursor's drop (at its base size) magnifies `magnify`× at its
+    // apex, whose radius of curvature is a / (2 z0) for a dome of height a z0.
     const phi = (Math.min(Math.max(config.angle, 5), 85) * Math.PI) / 180;
-    const R = 1 / Math.sin(phi);
-    const z0 = R * (1 - Math.cos(phi));
-    const depth = (r: number) => (r * R * (1 - 1 / Math.max(config.magnify, 1.01))) / (1 - 1 / WATER);
+    const z0 = Math.tan(phi / 2);
+    const depth = (r: number) => (r / (2 * z0)) * (1 - 1 / Math.max(config.magnify, 1.01)) / (1 - 1 / WATER);
     const glass = Math.max(depth(config.size) - config.size * z0, 0);
     const sway = still ? 0 : Math.sin(time * 2.1) * 0.015 * Math.min(Math.abs(drop.spring), 1);
     uniforms[0] = drop.x * a;
     uniforms[1] = drop.y;
     uniforms[2] = rc * (1 + sway);
-    uniforms[3] = depth(rc);
+    uniforms[3] = 10;
     // Largest first, so a crowded tile loses only the smallest drops.
     const sized = drops
       .map((d) => ({ d, r: d.r * Math.sin((Math.min(d.grow, 1) * Math.PI) / 2) }))
       .filter((e) => e.r > 0)
       .sort((x, y) => y.r - x.r)
       .slice(0, MAX_DROPS - 1);
-    sized.forEach(({ d, r }, i) => uniforms.set([d.x * a, d.y, r, glass + r * z0], (i + 1) * 4));
+    sized.forEach(({ d, r }, i) => uniforms.set([d.x * a, d.y, r, Math.round(d.flat * 10) + Math.min(d.seed, 0.999)], (i + 1) * 4));
 
     const cols = Math.max(1, Math.round(TILE_ROWS * a)), rows = TILE_ROWS;
     if (bins.length !== cols * rows * BIN) bins = new Uint8Array(cols * rows * BIN);
@@ -350,6 +380,7 @@ export function mount(
     gl.uniform1f(u.uPx, px);
     gl.uniform4fv(u['uDrops[0]'], uniforms);
     gl.uniform1i(u.uBins, 1);
+    gl.uniform1f(u.uGlass, glass);
     gl.uniform2f(u.uTiles, cols, rows);
     gl.uniform2f(u.uDir, drop.dirX, drop.dirY);
     gl.uniform1f(u.uStretch, drop.stretch);

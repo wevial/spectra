@@ -1,13 +1,15 @@
-export const MAX_DROPS = 96;
+export const MAX_DROPS = 128;
 /** Drops listed per screen tile; the smallest are dropped past this. */
-export const BIN = 8;
+export const BIN = 10;
 
 // A phone screen with water on it. The panel is a grid of emitters (RGB
 // stripes, or a diamond pentile), far too fine to see until a drop sits on
-// it. Each drop is a spherical cap (footprint radius a, contact angle φ) on
-// cover glass above the pixels, so it's a plano-convex lens: view rays
-// refract at its surface and land on the panel closer to the center, which
-// magnifies the subpixels. The landing point is traced per color channel with
+// it. The water is one surface over cover glass above the pixels: each drop
+// a low dome (a paraboloid at the contact angle, with a slightly lumpy pinned
+// outline), blended with its neighbours by a smooth max so touching drops
+// grow a neck and fuse into one blob. Each dome is a plano-convex lens: view
+// rays refract at the surface and land on the panel closer to the center,
+// which magnifies the subpixels. The landing point is traced per color channel with
 // water's (exaggerated) dispersion, so rims fringe into rainbows.
 //
 // Every drop sits on the same glass, so the optics depend on its size: the
@@ -24,7 +26,8 @@ uniform float uLod;         // content mip level for one panel pixel
 uniform vec2 uRes;          // drawing buffer, device px
 uniform float uAspect;
 uniform float uPx;          // panel pixels per height unit
-uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, depth to the panel under the center
+uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, flatness×10 + shape seed
+uniform float uGlass;       // cover glass thickness, height units
 uniform highp usampler2D uBins; // per tile, the drops that reach it (255: end of list)
 uniform vec2 uTiles;
 uniform vec2 uDir;          // drop 0 (the cursor's) heading, and how far it's stretched
@@ -180,16 +183,16 @@ void main() {
   vec2 p = vUv * vec2(uAspect, 1.0);
   float pixel = 1.0 / uRes.y; // one device px, height units
 
-  // The drop over this point: the tallest, where they overlap.
-  float top = 0.0;
-  vec3 N = vec3(0.0, 0.0, 1.0);
-  float rho = 2.0, D = 0.0, a = 1.0;
-  vec2 off = vec2(0.0);
-  bool held = false;
-  float R = 1.0 / uContact.x;          // sphere radius, in drop radii
-  float z0 = R - R * uContact.y;        // cap height at the center
+  // The water surface here: height above the glass and its slope.
+  float z0 = (1.0 - uContact.y) / uContact.x; // dome height per unit radius
+  float h = -1e3;
+  vec2 grad = vec2(0.0);
+  float peak = 0.0, a = 1.0;      // blended dome height and radius
+  vec2 center = p;
+  float own = 0.0;                // how much of the surface is the cursor's drop
+  vec2 o0 = vec2(0.0);
+  float rho0 = 2.0;
   vec3 shine = vec3(0.0);
-  vec4 lit = vec4(0.0, 0.0, 1.0, 1.0); // lamp as seen from the drop over this point
   ivec2 tile = ivec2(min(vUv * uTiles, uTiles - 1.0));
   for (int j = 0; j < ${BIN}; j++) {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
@@ -200,44 +203,63 @@ void main() {
     float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
     if (dot(o, o) >= reach * reach) continue;
     shine += glint(p, d);
-    vec2 q = o / d.z;
-    vec2 J = vec2(1.0);
-    vec2 perp = vec2(-uDir.y, uDir.x);
+    float H = d.z * z0 * floor(d.w) / 10.0;
+    float hi;
+    vec2 g;
     if (i == 0) {
       // The moving drop stretches along its heading, with a tail behind.
+      vec2 perp = vec2(-uDir.y, uDir.x);
       float tail = dot(o, uDir) < 0.0 ? 1.0 + max(uStretch, 0.0) * 0.8 : 1.0;
-      J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
-      q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
+      vec2 J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
+      vec2 q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
+      hi = H * (1.0 - dot(q, q));
+      vec2 gf = -2.0 * H * q * J / d.z;
+      g = gf.x * uDir + gf.y * perp;
+      o0 = o;
+      rho0 = length(q);
+    } else {
+      // Drops pin to the glass unevenly, so bigger ones aren't quite round.
+      float seed = fract(d.w) * 97.0;
+      float th = atan(o.y, o.x);
+      float lumpy = smoothstep(0.15, 0.6, d.z / uSize);
+      float rr = d.z * (1.0 + lumpy * (0.08 * sin(2.0 * th + seed) + 0.05 * sin(3.0 * th + seed * 1.7)));
+      hi = H * (1.0 - dot(o, o) / (rr * rr));
+      g = -2.0 * H * o / (rr * rr);
     }
-    float r2 = dot(q, q);
-    if (r2 >= 1.0) continue;
-    float zs = sqrt(R * R - r2);
-    float z = (zs - R * uContact.y) * d.z;
-    if (z <= top) continue;
-    top = z;
-    vec2 slope = q * J / zs;
-    if (i == 0) slope = slope.x * uDir + slope.y * perp;
-    N = normalize(vec3(slope, 1.0));
-    rho = sqrt(r2);
-    a = d.z;
-    off = o;
-    held = i == 0;
-    lit = lamp(d.xy);
-    D = d.w - (z0 * d.z - z);
+    if (h < -1e2) {
+      h = hi; grad = g; peak = H; a = d.z; center = d.xy; own = float(i == 0);
+    } else {
+      // Smooth max, softened in proportion to the smaller dome, so drops
+      // only fuse once they touch.
+      float k = 0.35 * min(H, peak);
+      float m = clamp(0.5 + 0.5 * (hi - h) / k, 0.0, 1.0);
+      h = mix(h, hi, m) + k * m * (1.0 - m);
+      grad = mix(grad, g, m);
+      peak = max(peak, H);
+      a = mix(a, d.z, m);
+      center = mix(center, d.xy, m);
+      own = mix(own, float(i == 0), m);
+    }
   }
+  vec3 N = normalize(vec3(-grad, 1.0));
+  float D = uGlass + max(h, 0.0);
+  float sd = h / max(length(grad), 1e-5); // distance in from the edge, roughly
+  float rim = smoothstep(0.55 * a, 0.03 * a, sd);
+  vec4 lit = lamp(center);
 
   // Landing points per channel. Derivatives are taken here, outside any
-  // branch (off a drop, N is flat and every channel lands straight down).
+  // branch (off the water, N is flat and every channel lands straight down).
   vec2 lr = land(N, uIor.r, D), lg = land(N, uIor.g, D), lb = land(N, uIor.b, D);
-  if (held) {
+  if (own > 0.0) {
     // The cursor's drop is an idealized magnifier: even magnification
     // across the middle, easing back to 1× at the rim, where the panel
     // compresses and the colors split.
-    float t = smoothstep(0.6, 1.0, rho);
-    lg = -off * (1.0 - 1.0 / uMagnify) * (1.0 - t * t);
+    float t = smoothstep(0.6, 1.0, rho0);
+    vec2 ideal = -o0 * (1.0 - 1.0 / uMagnify) * (1.0 - t * t);
     float split = 9.0 * t * t;
-    lr = lg * (1.0 + ((uIor.r - 1.0) / (uIor.g - 1.0) - 1.0) * split);
-    lb = lg * (1.0 + ((uIor.b - 1.0) / (uIor.g - 1.0) - 1.0) * split);
+    lg = mix(lg, ideal, own);
+    lr = mix(lr, ideal * (1.0 + ((uIor.r - 1.0) / (uIor.g - 1.0) - 1.0) * split), own);
+    lb = mix(lb, ideal * (1.0 + ((uIor.b - 1.0) / (uIor.g - 1.0) - 1.0) * split), own);
   }
   vec2 s = p * uPx;
   vec2 sg = (p + lg) * uPx;
@@ -245,19 +267,23 @@ void main() {
   vec2 dx = dFdx(sg), dy = dFdy(sg);
 
   vec3 col;
-  float wetness = rho < 1.0 ? smoothstep(1.0, 1.0 - 1.5 * pixel / a, rho) : 0.0;
+  float wetness = smoothstep(0.0, 1.5 * pixel, sd);
   if (wetness <= 0.0) {
     col = screen(s, f0);
   } else {
     vec2 sr = (p + lr) * uPx;
     vec2 sb = (p + lb) * uPx;
     // Shallow depth of field: the panel softens toward the rim.
-    float blur = uFocus * smoothstep(0.3, 1.0, rho);
+    float blur = uFocus * rim;
     vec3 emit = vec3(panel(sr, dx, dy, blur).r, panel(sg, dx, dy, blur).g, panel(sb, dx, dy, blur).b);
 
     float F = 0.02 + 0.98 * pow(1.0 - N.z, 5.0);
     col = emit * (1.0 - F);
-    col *= 1.0 - 0.6 * smoothstep(0.7, 1.0, rho) * smoothstep(0.7, 1.0, rho); // the rim bends away from the light
+    // The rim bends away from the light, darkest on the side away from the
+    // lamp, with a dark line where the water meets the glass.
+    vec2 out_ = normalize(N.xy + 1e-6);
+    col *= 1.0 - rim * rim * (0.45 + 0.3 * clamp(-dot(out_, normalize(lit.xy + 1e-6)), 0.0, 1.0));
+    col *= 1.0 - 0.5 * exp(-sd / (2.5 * pixel));
     col += room(reflect(vec3(0.0, 0.0, -1.0), N), lit.xyz) * F * uGloss * 6.0 * (0.4 + 0.6 * lit.w);
     if (wetness < 1.0) col = mix(screen(s, f0), col, wetness);
   }
