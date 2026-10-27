@@ -80,7 +80,11 @@ void main() {
 }
 `;
 
-/** Paper, each filing as a thin rounded needle with a drop shadow and a metal glint. */
+/**
+ * Paper, each filing as a thin rounded needle with a drop shadow and a metal
+ * glint. Each pixel checks the cells within uReach (1 = 3×3, enough for
+ * filings up to about two cells long; 2 = 5×5 for longer ones).
+ */
 export const RENDER = /* glsl */ `#version 300 es
 precision highp float;
 in vec2 vUv;
@@ -89,6 +93,7 @@ uniform vec2 uCells;
 uniform float uCellPx;     // device px per cell
 uniform float uDensity;
 uniform float uLength;     // filing length, cells
+uniform int uReach;
 uniform vec3 uPaper;
 uniform vec3 uInk;
 uniform float uShadow;
@@ -108,8 +113,8 @@ void main() {
   float aa = 1.0 / uCellPx;
 
   float ink = 0.0, shade = 0.0, glint = 0.0;
-  for (int y = -2; y <= 2; y++)
-  for (int x = -2; x <= 2; x++) {
+  for (int y = -uReach; y <= uReach; y++)
+  for (int x = -uReach; x <= uReach; x++) {
     ivec2 c = base + ivec2(x, y);
     if (c.x < 0 || c.y < 0 || c.x >= int(uCells.x) || c.y >= int(uCells.y)) continue;
     vec3 h = hash32(vec2(c));
@@ -122,7 +127,7 @@ void main() {
 
     float cover = smoothstep(w + aa, w - aa, segment(pc - ctr, dir, halfLen));
     // Light from the upper left: shadows fall down and to the right.
-    float sh = smoothstep(w + 0.3, w - 0.05, segment(pc - ctr - vec2(0.16, -0.2), dir, halfLen));
+    float sh = smoothstep(w + 0.2, w - 0.05, segment(pc - ctr - vec2(0.12, -0.15), dir, halfLen));
     shade = max(shade, sh);
     if (cover > ink) {
       ink = cover;

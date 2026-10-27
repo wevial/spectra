@@ -175,6 +175,8 @@ export function mount(container: HTMLElement, opts: Partial<FilingsConfig> = {})
     gl.uniform1f(u.uCellPx, cell * dpr);
     gl.uniform1f(u.uDensity, config.density);
     gl.uniform1f(u.uLength, config.length);
+    // A filing reaches half its length (+ width) from its cell's center.
+    gl.uniform1i(u.uReach, config.length * 0.5 + 0.15 > 1.0 ? 2 : 1);
     gl.uniform3fv(u.uPaper, hexToRgb(config.paper));
     gl.uniform3fv(u.uInk, hexToRgb(config.ink));
     gl.uniform1f(u.uShadow, config.shadow);
