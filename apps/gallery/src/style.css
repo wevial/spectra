@@ -29,8 +29,14 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--line);
+  /* Scrolls sideways rather than wrapping when the effects outgrow the screen. */
+  max-width: calc(100vw - 32px);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.nav::-webkit-scrollbar { display: none; }
 .nav a {
+  white-space: nowrap;
   color: var(--muted);
   text-decoration: none;
   padding: 6px 12px;
@@ -114,6 +120,12 @@ body {
     radial-gradient(60% 35% at 50% 45%, rgba(53, 255, 143, 0.28), transparent 70%),
     radial-gradient(50% 25% at 55% 25%, rgba(255, 61, 122, 0.18), transparent 70%),
     linear-gradient(#020309 0%, #08121c 70%, #020306 70.5%);
+}
+.riso-fallback {
+  background:
+    radial-gradient(circle at 66% 50%, #ffe800 0 18%, transparent 18.5%),
+    linear-gradient(#5a7fd0, #ff7eb6 55%, #ffc27a 75%),
+    #f4efe4;
 }
 .glitch-fallback {
   background:
