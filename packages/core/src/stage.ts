@@ -1,6 +1,10 @@
 // Host plumbing every effect needs: a canvas filling its container, a WebGL2
 // context, DPR-capped sizing, mouse tracking in GL uv space, and a render loop
 // that pauses while the tab is hidden or the canvas is scrolled out of view.
+// Resolution adapts to the GPU: each frame is timed (GPU timer queries where
+// available) and the drawing buffer shrinks when frames run over budget.
+
+import { AdaptiveResolution } from './resolution';
 
 export interface Pointer {
   x: number;        // GL uv, origin bottom-left
@@ -16,6 +20,10 @@ export interface Stage {
   pointer: Pointer;
   reducedMotion: MediaQueryList;
   dprCap: number;
+  /** Device px per CSS px actually rendered: DPR, capped, times the adaptive scale. */
+  readonly dpr: number;
+  /** Current adaptive resolution scale, 0.5..1. */
+  readonly scale: number;
   /** Resize the drawing buffer to the canvas box. Returns true if it changed. */
   resize(): boolean;
   start(frame: (dt: number, rawDtMs: number) => void): void;
@@ -27,6 +35,10 @@ export interface StageOptions {
   dprCap?: number;
   /** Ask for EXT_color_buffer_float (render to half/float targets). */
   floatTargets?: boolean;
+  /** Shrink the drawing buffer when the GPU falls behind (default true). */
+  adaptive?: boolean;
+  /** GPU ms per frame the adaptive resolution aims to stay under (default 6). */
+  budgetMs?: number;
   onResize?: () => void;
 }
 
@@ -36,17 +48,18 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
   container.appendChild(canvas);
 
-  const gl = canvas.getContext('webgl2', {
+  const context = canvas.getContext('webgl2', {
     alpha: false,
     depth: false,
     stencil: false,
     antialias: false,
     powerPreference: 'high-performance',
   });
-  if (!gl || (opts.floatTargets && !gl.getExtension('EXT_color_buffer_float'))) {
+  if (!context || (opts.floatTargets && !context.getExtension('EXT_color_buffer_float'))) {
     canvas.remove();
     return null;
   }
+  const gl: WebGL2RenderingContext = context;
 
   const ac = new AbortController();
   const listen = { passive: true, signal: ac.signal } as const;
@@ -72,6 +85,13 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   document.addEventListener('pointerleave', () => { pointer.active = false; }, listen);
   window.addEventListener('blur', () => { pointer.active = false; }, listen);
 
+  const adaptive = opts.adaptive === false ? null : new AdaptiveResolution({ budgetMs: opts.budgetMs });
+  // GPU time per frame, read back a few frames late. Disjoint results
+  // (power state changes, context switches) are dropped.
+  const timer = adaptive ? gl.getExtension('EXT_disjoint_timer_query_webgl2') : null;
+  const queries: WebGLQuery[] = [];
+  let gpuMs: number | undefined;
+
   let frameFn: ((dt: number, rawDtMs: number) => void) | null = null;
   let rafId = 0;
   let last = 0;
@@ -84,10 +104,15 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
     pointer,
     reducedMotion,
     dprCap: opts.dprCap ?? 2,
+    get scale() {
+      return adaptive?.scale ?? 1;
+    },
+    get dpr() {
+      return Math.min(window.devicePixelRatio || 1, stage.dprCap) * stage.scale;
+    },
     resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, stage.dprCap);
-      const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
-      const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+      const w = Math.max(1, Math.round(canvas.clientWidth * stage.dpr));
+      const h = Math.max(1, Math.round(canvas.clientHeight * stage.dpr));
       if (canvas.width === w && canvas.height === h) return false;
       canvas.width = w;
       canvas.height = h;
@@ -117,7 +142,26 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
     if (!frameFn) return;
     const rawDt = now - last;
     last = now;
+
+    if (timer) {
+      while (queries.length && gl.getQueryParameter(queries[0], gl.QUERY_RESULT_AVAILABLE)) {
+        const q = queries.shift()!;
+        if (!gl.getParameter(timer.GPU_DISJOINT_EXT)) gpuMs = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6;
+        gl.deleteQuery(q);
+      }
+    }
+    if (adaptive?.sample(rawDt, gpuMs) && stage.resize()) {
+      gpuMs = undefined;
+      opts.onResize?.();
+    }
+
+    const q = timer && queries.length < 4 ? gl.createQuery() : null;
+    if (q) gl.beginQuery(timer!.TIME_ELAPSED_EXT, q);
     frameFn(Math.min(Math.max(rawDt / 1000, 0), 1 / 30), rawDt);
+    if (q) {
+      gl.endQuery(timer!.TIME_ELAPSED_EXT);
+      queries.push(q);
+    }
     pointer.dx = 0;
     pointer.dy = 0;
     schedule();

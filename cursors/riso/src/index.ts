@@ -104,7 +104,7 @@ export function mount(
     if (content.source === null) {
       if (posterDirty) {
         // The poster is drawn in CSS px: the print's grain and dots are what's fine, not the art.
-        const dpr = Math.min(window.devicePixelRatio || 1, stage.dprCap);
+        const dpr = stage.dpr;
         drawPoster(posterCanvas, Math.round(gl.drawingBufferWidth / dpr), Math.round(gl.drawingBufferHeight / dpr), config.font);
         content.upload(posterCanvas, posterCanvas.width, posterCanvas.height);
         posterDirty = false;
@@ -122,7 +122,7 @@ export function mount(
     }
     const pad = (rows: number[], size: number) => [...rows, ...Array(Math.max(0, size - rows.length)).fill(0)];
 
-    const dpr = Math.min(window.devicePixelRatio || 1, stage.dprCap);
+    const dpr = stage.dpr;
     const r = config.register * dpr;
     // Spread: the first and last layers move opposite ways, a middle one stays.
     const spread = inks.length === 1 ? [1] : inks.map((_, i) => i / (inks.length - 1) * 2 - 1);

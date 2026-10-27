@@ -37,7 +37,7 @@ puts your tweaks on the clipboard as the options object for `mount()`.
 ## Layout
 
 ```
-packages/core   WebGL2 helpers, stage (canvas, pointer, render loop), cursor trail, GLSL noise
+packages/core   WebGL2 helpers, stage (canvas, pointer, render loop, adaptive resolution), cursor trail, GLSL noise, content sources
 cursors/*       one package per cursor effect
 apps/gallery    Vite multi-page site, one page per effect
 ```

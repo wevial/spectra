@@ -83,7 +83,7 @@ export function mount(container: HTMLElement, opts: Partial<DitherConfig> = {}):
     light.y += (target.y - light.y) * k;
     const len = Math.hypot(light.x, light.y, 0.6);
 
-    const dpr = Math.min(window.devicePixelRatio || 1, stage.dprCap);
+    const dpr = stage.dpr;
     const colors = (PALETTES[config.palette] ?? PALETTES.spectra).flatMap(hexToRgb);
 
     program.use();

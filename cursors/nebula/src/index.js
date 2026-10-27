@@ -22,6 +22,8 @@ export function mount(container, opts = {}) {
 
   const stage = createStage(container, {
     floatTargets: true,
+    // Nebula's own governor trades detail as well as resolution (perf.js).
+    adaptive: false,
     onResize: () => fluid?.resize(),
   });
   if (!stage) {
