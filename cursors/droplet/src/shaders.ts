@@ -37,7 +37,9 @@ uniform float uSensor;      // camera sensor pitch, device px
 uniform float uGrid;
 uniform float uFocus;
 uniform float uGloss;
-uniform vec2 uLight;        // ring light tilt
+uniform vec3 uSun;          // toward the light (unit)
+uniform float uSize;        // the cursor drop's base radius
+uniform float uTime;
 out vec4 fragColor;
 
 vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
@@ -133,13 +135,34 @@ vec2 land(vec3 N, float n, float D) {
   return T.xy / -T.z * D;
 }
 
-/** What the drop reflects: a dim room, a window, and a ring light overhead. */
+/** What the drop reflects: a dim room and a bright, soft-edged window. */
 vec3 room(vec3 R) {
-  vec3 axis = normalize(vec3(uLight, 1.0));
-  float a = acos(clamp(dot(R, axis), -1.0, 1.0));
-  float ring = exp(-pow((a - 0.3) / 0.03, 2.0));
-  float window = smoothstep(0.35, 0.15, length(R.xy - vec2(-0.5, 0.45)));
-  return vec3(0.9, 0.95, 1.0) * (ring * 7.0 + window * 2.0 + 0.25);
+  // Window plane coordinates around the sun (a gnomonic projection, so the
+  // drop's curvature bends the window's outline).
+  vec2 w = R.xy / max(R.z, 0.05) - uSun.xy / uSun.z;
+  float pane = smoothstep(0.08, -0.06, box(w - vec2(0.04, -0.02), vec2(0.2, 0.27), 0.08));
+  float glow = 0.6 + 0.4 * smoothstep(-0.3, 0.3, w.y - 0.4 * w.x); // daylight falls off down the window
+  return vec3(1.0, 0.97, 0.92) * pane * glow * 3.0 + vec3(0.2, 0.22, 0.26) * (0.6 + 0.4 * R.z);
+}
+
+/**
+ * The sun's own reflection in a drop, as a camera sees it: a hot core, a
+ * soft bloom, and a four-point diffraction star on big drops. A spherical
+ * cap mirrors the sun where its normal is halfway between it and the eye.
+ */
+vec3 glint(vec2 p, vec4 d) {
+  float R = 1.0 / uContact.x;
+  vec3 H = normalize(uSun + vec3(0.0, 0.0, 1.0));
+  vec2 g = (p - d.xy) / d.z - H.xy * R; // from the highlight, drop radii
+  float big = smoothstep(0.3, 0.8, d.z / uSize);
+  float core = exp(-dot(g, g) / 0.002) * 4.0 + exp(-dot(g, g) / 0.03) * 0.5;
+  float spin = 0.35 + 0.08 * sin(uTime * 0.7 + d.x * 9.0);
+  vec2 u = mat2(cos(spin), sin(spin), -sin(spin), cos(spin)) * g;
+  vec2 au = abs(u);
+  float thin = 0.006 + 0.5 / (uRes.y * d.z); // at least ~half a device px
+  float star = exp(-au.y / thin - au.x * 5.0) + exp(-au.x / thin - au.y * 5.0);
+  star *= 1.2 * (0.8 + 0.2 * sin(uTime * 3.1 + d.y * 17.0)); // twinkle
+  return vec3(1.0, 0.97, 0.9) * (core + star * big) * uGloss;
 }
 
 void main() {
@@ -154,6 +177,7 @@ void main() {
   bool held = false;
   float R = 1.0 / uContact.x;          // sphere radius, in drop radii
   float z0 = R - R * uContact.y;        // cap height at the center
+  vec3 shine = vec3(0.0);
   ivec2 tile = ivec2(min(vUv * uTiles, uTiles - 1.0));
   for (int j = 0; j < ${BIN}; j++) {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
@@ -161,8 +185,9 @@ void main() {
     int i = int(id);
     vec4 d = uDrops[i];
     vec2 o = p - d.xy;
-    float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.0);
+    float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
     if (dot(o, o) >= reach * reach) continue;
+    shine += glint(p, d);
     vec2 q = o / d.z;
     vec2 J = vec2(1.0);
     vec2 perp = vec2(-uDir.y, uDir.x);
@@ -220,9 +245,11 @@ void main() {
     float F = 0.02 + 0.98 * pow(1.0 - N.z, 5.0);
     col = lit * (1.0 - F);
     col *= 1.0 - 0.6 * smoothstep(0.7, 1.0, rho) * smoothstep(0.7, 1.0, rho); // the rim bends away from the light
-    col += room(reflect(vec3(0.0, 0.0, -1.0), N)) * F * uGloss * 3.0;
+    col += room(reflect(vec3(0.0, 0.0, -1.0), N)) * F * uGloss * 6.0;
     if (wetness < 1.0) col = mix(screen(s, f0), col, wetness);
   }
+
+  col += shine;
 
   // Bright subpixels bleed toward white, then a soft shoulder.
   vec3 hot = max(col - 1.0, 0.0);

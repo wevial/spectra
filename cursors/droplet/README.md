@@ -36,8 +36,11 @@ Layouts: `lcd` (RGB stripes) and `oled` (diamond pentile). See `DEFAULTS` in
   the frequency left after removing whole cycles per sensor pixel, and its
   phase picks which channel lights. The result is soft rainbow bands that
   shift as the drops move.
-- **Surface.** Fresnel reflection of a room with a ring light and a window,
-  a rim that bends away from the light, and shallow depth of field.
+- **Surface.** Fresnel reflection of a dim room and a soft sunlit window,
+  a rim that bends away from the light, and shallow depth of field. Each drop
+  mirrors the sun where its normal is halfway between sun and eye, drawn as a
+  hot core with bloom and, on big drops, a twinkling four-point star. Moving
+  the cursor tilts the light a little, so every glint slides.
 - **Cost.** Drops are binned into screen tiles (a small integer texture), so
   each pixel only checks the drops near it.
 

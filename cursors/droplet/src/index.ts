@@ -284,7 +284,7 @@ export function mount(
       }
     };
     bin(0, drop.x, drop.y, rc * (1 + sway) * (2 + 2 * Math.abs(drop.stretch)));
-    sized.forEach(({ d, r }, i) => bin(i + 1, d.x, d.y, r));
+    sized.forEach(({ d, r }, i) => bin(i + 1, d.x, d.y, r * 1.5)); // glints spill past the rim
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, binTex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -317,7 +317,13 @@ export function mount(
     gl.uniform1f(u.uGrid, config.grid);
     gl.uniform1f(u.uFocus, config.focus);
     gl.uniform1f(u.uGloss, config.gloss);
-    gl.uniform2f(u.uLight, 0.12, 0.08);
+    // The light sits up and to the left; moving the drop tilts it a little,
+    // like tilting a phone in the sun, so every glint slides.
+    const sx = -0.4 + 0.25 * (drop.x - 0.5), sy = 0.5 + 0.25 * (drop.y - 0.5);
+    const sl = Math.hypot(sx, sy, 1);
+    gl.uniform3f(u.uSun, sx / sl, sy / sl, 1 / sl);
+    gl.uniform1f(u.uSize, config.size);
+    gl.uniform1f(u.uTime, time);
     blit(null);
   });
 
