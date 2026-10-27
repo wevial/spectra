@@ -325,8 +325,8 @@ export function mount(
     if (drop.speed > 0.08 && !still && (!head || step > rc * 0.25)) {
       const cut = !head || sinceStreak > 0.5;
       streakLength += cut ? 1 : step;
-      const wave = 0.85 + 0.15 * Math.sin(streakLength * 37) + 0.08 * Math.sin(streakLength * 91 + 2);
-      streak.push({ x: drop.x, y: drop.y, w: rc * 0.2 * wave, age: 0, cut, neck: Math.random() < 0.3 ? 1 : 0.2 * Math.random() });
+      const wave = 0.9 + 0.1 * Math.sin(streakLength * 23) + 0.05 * Math.sin(streakLength * 61 + 2);
+      streak.push({ x: drop.x, y: drop.y, w: rc * 0.45 * wave, age: 0, cut, neck: Math.random() < 0.3 ? 1 : 0.2 * Math.random() });
       if (streak.length > MAX_TRAIL - 1) {
         streak.shift();
         streak[0].cut = true;

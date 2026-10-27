@@ -184,6 +184,26 @@ vec3 glint(vec2 p, vec4 d) {
   return vec3(1.0, 0.97, 0.9) * (core + star * big) * uGloss * (0.3 + 0.7 * L.w);
 }
 
+/**
+ * Add a dome (height hi, slope g, peak H, radius r, center c) to the water
+ * surface. A smooth max, softened in proportion to the smaller dome, so
+ * drops only fuse once they touch.
+ */
+void fuse(inout float h, inout vec2 grad, inout float peak, inout float a, inout vec2 center,
+          float hi, vec2 g, float H, float r, vec2 c) {
+  if (h < -1e2) {
+    h = hi; grad = g; peak = H; a = r; center = c;
+    return;
+  }
+  float k = 0.35 * min(H, peak);
+  float m = clamp(0.5 + 0.5 * (hi - h) / k, 0.0, 1.0);
+  h = mix(h, hi, m) + k * m * (1.0 - m);
+  grad = mix(grad, g, m);
+  peak = max(peak, H);
+  a = mix(a, r, m);
+  center = mix(center, c, m);
+}
+
 void main() {
   vec2 p = vUv * vec2(uAspect, 1.0);
   float pixel = 1.0 / uRes.y; // one device px, height units
@@ -195,6 +215,10 @@ void main() {
   float peak = 0.0, a = 1.0;      // blended dome height and radius
   vec2 center = p;
   vec3 shine = vec3(0.0);
+  // The streak's segments are combined with a plain max, so their joints are
+  // seamless; the streak as a whole then blends with the drops.
+  float sh = -1e3, sH = 0.0, sr = 1.0;
+  vec2 sgr = vec2(0.0), sc = p;
   ivec2 tile = ivec2(min(vUv * uTiles, uTiles - 1.0));
   for (int j = 0; j < ${BIN}; j++) {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
@@ -215,9 +239,12 @@ void main() {
       vec2 o = p - c;
       r = sqrt(mix(A.z * A.z, B.z * B.z, t));
       if (r < 1e-5 || dot(o, o) >= 1.44 * r * r) continue;
-      H = r * z0 * 0.5;
+      H = r * z0 * 0.18; // a wet track is much flatter than a drop: a weak lens
       hi = H * (1.0 - dot(o, o) / (r * r));
-      g = -2.0 * H * o / (r * r);
+      if (hi > sh) {
+        sh = hi; sgr = -2.0 * H * o / (r * r); sH = H; sr = r; sc = c;
+      }
+      continue;
     } else {
       vec4 d = uDrops[i];
       vec2 o = p - d.xy;
@@ -248,20 +275,9 @@ void main() {
         g = -2.0 * H * o / (rr * rr);
       }
     }
-    if (h < -1e2) {
-      h = hi; grad = g; peak = H; a = r; center = c;
-    } else {
-      // Smooth max, softened in proportion to the smaller dome, so drops
-      // only fuse once they touch.
-      float k = 0.35 * min(H, peak);
-      float m = clamp(0.5 + 0.5 * (hi - h) / k, 0.0, 1.0);
-      h = mix(h, hi, m) + k * m * (1.0 - m);
-      grad = mix(grad, g, m);
-      peak = max(peak, H);
-      a = mix(a, r, m);
-      center = mix(center, c, m);
-    }
+    fuse(h, grad, peak, a, center, hi, g, H, r, c);
   }
+  if (sh > -1e2) fuse(h, grad, peak, a, center, sh, sgr, sH, sr, sc);
   vec3 N = normalize(vec3(-grad, 1.0));
   float D = uGlass + max(h, 0.0);
   float sd = h / max(length(grad), 1e-5); // distance in from the edge, roughly
