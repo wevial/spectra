@@ -5,12 +5,12 @@
 
 import { Program, VERTEX, makeBlit, SourceTexture } from '@spectra/core';
 import type { Source, Stage } from '@spectra/core';
-import { DROPLET, MAX_DROPS, BIN, BIN_END } from './shaders';
+import { DROPLET, MAX_DROPS, MAX_DRIPS, BIN, BIN_END } from './shaders';
 import { drawPoster } from './poster';
 
 export const LAYOUTS = { lcd: 0, oled: 1 } as const;
 /** Most drops a frame can show. */
-export { MAX_DROPS } from './shaders';
+export { MAX_DROPS, MAX_DRIPS } from './shaders';
 export type Layout = keyof typeof LAYOUTS;
 
 /** Look of the screen and the water; shared by the cursor and the filter. */
@@ -54,6 +54,17 @@ export interface Bead {
   stretch?: number;
 }
 
+/** A drip streak: from its bottom end (at a sliding drop) up to its top. Uv, half-widths as fractions of height. */
+export interface Drip {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  w0: number;
+  w1: number;
+  seed: number;
+}
+
 /** The cursor's drop: it stretches along its heading and keeps its magnification as it grows. */
 export interface Lead {
   x: number;
@@ -66,6 +77,7 @@ export interface Lead {
 
 export interface Frame {
   beads: Bead[];
+  drips?: Drip[];
   lead?: Lead;
   /** The lamp: position in uv, and height above the glass (fraction of height). */
   lamp: [number, number, number];
@@ -106,6 +118,8 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
   document.fonts?.load(`500 64px ${look.font}`).then(() => { posterKey = ''; }, () => {});
 
   const uniforms = new Float32Array(MAX_DROPS * 4);
+  const dripEnds = new Float32Array(MAX_DRIPS * 4);
+  const dripWidths = new Float32Array(MAX_DRIPS * 4);
   // Drops binned into screen tiles, so each pixel only checks those nearby.
   const binTex = gl.createTexture()!;
   gl.activeTexture(gl.TEXTURE1);
@@ -122,7 +136,7 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 1, 1, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array([0]));
 
-  function draw({ beads, lead, lamp, time, mist }: Frame) {
+  function draw({ beads, drips = [], lead, lamp, time, mist }: Frame) {
     const a = canvas.clientWidth / Math.max(canvas.clientHeight, 1);
 
     // Content: the poster redraws when the panel size or the minute changes.
@@ -173,6 +187,12 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
     };
     if (lead) bin(0, lead.x, lead.y, lead.r * (2 + 2 * Math.abs(lead.stretch)));
     sized.forEach((b, i) => bin(i + 1, b.x, b.y, b.r * (b.stretch ? 2 + 2 * b.stretch : 1.5))); // glints spill past the rim
+    drips.slice(0, MAX_DRIPS).forEach((d, i) => {
+      dripEnds.set([d.x0 * a, d.y0, d.x1 * a, d.y1], i * 4);
+      dripWidths.set([d.w0, d.w1, d.seed * 97, 0], i * 4);
+      const w = Math.max(d.w0, d.w1) * 1.2;
+      bin(MAX_DROPS + i, (d.x0 + d.x1) / 2, (d.y0 + d.y1) / 2, Math.hypot((d.x1 - d.x0) * a, d.y1 - d.y0) / 2 + w);
+    });
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, binTex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -203,6 +223,8 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
     gl.uniform4fv(u['uDrops[0]'], uniforms);
     gl.uniform1i(u.uBins, 1);
     gl.uniform1f(u.uGlass, glass);
+    gl.uniform4fv(u['uDrips[0]'], dripEnds);
+    gl.uniform4fv(u['uDripW[0]'], dripWidths);
     gl.uniform2f(u.uTiles, cols, rows);
     gl.uniform2f(u.uDir, lead?.dirX ?? 1, lead?.dirY ?? 0);
     gl.uniform1f(u.uStretch, lead?.stretch ?? 0);

@@ -1,4 +1,6 @@
 export const MAX_DROPS = 128;
+/** Drip streaks behind sliding drops (ids after the drops). */
+export const MAX_DRIPS = 32;
 /** Drops listed per screen tile; the smallest are dropped past this. */
 export const BIN = 12;
 /** Marks the end of a tile's list. */
@@ -33,6 +35,8 @@ uniform float uAspect;
 uniform float uPx;          // panel pixels per height unit
 uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, packed: flatness×10 + 16 × slide stretch×40, + shape seed
 uniform float uGlass;       // cover glass thickness, height units
+uniform vec4 uDrips[${MAX_DRIPS}];  // drip streaks: bottom end, top end (height units)
+uniform vec4 uDripW[${MAX_DRIPS}];  // half-width at the bottom, at the top, wobble seed
 uniform highp usampler2D uBins; // per tile, the drops that reach it (255: end of list)
 uniform vec2 uTiles;
 uniform vec2 uDir;          // drop 0's heading, and how far it's stretched
@@ -108,6 +112,18 @@ vec3 beat(vec2 s, vec2 dx, vec2 dy, float blur) {
     m = vec3(1.0 + 0.95 * c, 1.0 - 0.5 * visX * visY * cos(TAU * px) * cos(TAU * py), 1.0 - 0.95 * c);
   }
   return content(s) * m;
+}
+
+/**
+ * The panel seen through fogged glass: condensation scatters it into a soft,
+ * hazy blur. fog 0..1; drops and the tracks they wipe are clear.
+ */
+vec3 hazy(vec2 s, float f, float fog) {
+  vec3 sharp = screen(s, f);
+  if (fog <= 0.0) return sharp;
+  vec2 uv = s / vec2(uAspect * uPx, uPx);
+  vec3 blur = lin(textureLod(uContent, uv * uFit.xy + uFit.zw, uLod + 3.0 * fog).rgb);
+  return mix(sharp, blur * 0.88 + 0.06, 0.85 * fog);
 }
 
 /** Linear light the panel emits at s (panel px). dx, dy: panel px per device px; blur: defocus, panel px. */
@@ -225,6 +241,22 @@ void main() {
     uint id = texelFetch(uBins, ivec2(tile.x * ${BIN} + j, tile.y), 0).r;
     if (id == ${BIN_END}u) break;
     int i = int(id);
+    if (i >= ${MAX_DROPS}) {
+      // A drip: the wet streak a sliding drop leaves, a low ridge tapering
+      // from the drop up to where it started, its width wavering a little.
+      vec4 s = uDrips[i - ${MAX_DROPS}], w = uDripW[i - ${MAX_DROPS}];
+      vec2 ab = s.zw - s.xy;
+      float len = max(length(ab), 1e-6);
+      float t = clamp(dot(p - s.xy, ab) / (len * len), 0.0, 1.0);
+      vec2 c = s.xy + ab * t;
+      vec2 o = p - c;
+      float along = t * len / max(w.x, 1e-5);
+      float r = mix(w.x, w.y, t) * (1.0 + 0.18 * sin(along * 1.3 + w.z) * sin(along * 0.47 + w.z * 2.0));
+      if (r <= 1e-5 || dot(o, o) >= r * r) continue;
+      float H = r * z0 * 0.7;
+      fuse(h, grad, peak, a, center, H * (1.0 - dot(o, o) / (r * r)), -2.0 * H * o / (r * r), H, r, c);
+      continue;
+    }
     vec4 d = uDrops[i];
     float packed = floor(d.w);
     float flat_ = mod(packed, 16.0) / 10.0;
@@ -292,8 +324,9 @@ void main() {
 
   vec3 col;
   float wetness = smoothstep(0.0, 1.5 * pixel, sd);
+  float fog = uMistAmount > 0.0 ? texture(uMist, vUv).r * uMistAmount : 0.0;
   if (wetness <= 0.0) {
-    col = screen(s, f0);
+    col = hazy(s, f0, fog);
   } else {
     vec2 sr = (p + lr) * uPx;
     vec2 sb = (p + lb) * uPx;
@@ -309,7 +342,7 @@ void main() {
     col *= 1.0 - rim * rim * (0.45 + 0.3 * clamp(-dot(out_, normalize(lit.xy + 1e-6)), 0.0, 1.0));
     col *= 1.0 - 0.5 * exp(-sd / (2.5 * pixel));
     col += room(reflect(vec3(0.0, 0.0, -1.0), N), lit.xyz) * F * uGloss * 6.0 * (0.4 + 0.6 * lit.w);
-    if (wetness < 1.0) col = mix(screen(s, f0), col, wetness);
+    if (wetness < 1.0) col = mix(hazy(s, f0, fog), col, wetness);
   }
 
   col += shine;

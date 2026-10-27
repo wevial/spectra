@@ -1,5 +1,5 @@
 // Rain filter — rain on a phone screen. Drops land on fogged glass, creep and
-// lurch down it, leave trails of smaller drops, swallow what they run into
+// lurch down it, leave a wet drip behind them that later breaks into beads, swallow what they run into
 // and speed up, and wipe a clear track through the condensation that slowly
 // fogs over again. Every drop is a small lens over the panel: moiré
 // rainbows, upside-down glimpses, magnified subpixels. Shows any image,
@@ -12,8 +12,8 @@
 
 import { createStage } from '@spectra/core';
 import type { Source } from '@spectra/core';
-import { createWater, LAYOUTS, MAX_DROPS } from '@spectra/droplet/water';
-import type { Bead, WaterLook } from '@spectra/droplet/water';
+import { createWater, LAYOUTS, MAX_DROPS, MAX_DRIPS } from '@spectra/droplet/water';
+import type { Bead, Drip as DripShape, WaterLook } from '@spectra/droplet/water';
 
 export { LAYOUTS };
 export type RainSource = Source;
@@ -23,7 +23,7 @@ export const DEFAULTS = {
   /** Panel pixel pitch, CSS px. */
   pixel: 2,
   /** Radius of the biggest drops, fraction of height: a drop this size magnifies `magnify`×. */
-  size: 0.055,
+  size: 0.04,
   magnify: 10,
   /** Contact angle, degrees. Flatter drops distort less toward the rim. */
   angle: 35,
@@ -42,13 +42,13 @@ export const DEFAULTS = {
   /** Strength of the star glint on big drops. */
   sparkle: 1,
   /** Drops landing per second. */
-  rain: 5,
+  rain: 4,
   /** How readily drops slide down. */
   gravity: 1,
-  /** How many trail drops a sliding drop leaves. */
-  trail: 1,
-  /** Condensation on the glass, 0..1. */
-  mist: 1,
+  /** How many loose drops a sliding drop sheds besides its drip. */
+  trail: 0.3,
+  /** Condensation on the glass, 0..1: fogs and blurs the screen, except where drops have wiped it. */
+  mist: 0.8,
   font: '"Geist", "Inter", system-ui, sans-serif',
 };
 
@@ -85,6 +85,21 @@ interface Drop {
   shrink: number;
   seed: number;
   grow: number;       // 0..1 as it lands
+  still: number;      // seconds since it last moved
+  drip: Drip | null;  // the streak it's drawing while it slides
+}
+
+/** The wet streak a sliding drop leaves: from where it started down to the drop. */
+interface Drip {
+  x0: number;         // top, uv
+  y0: number;
+  x1: number;         // bottom, uv: follows the drop while attached
+  y1: number;
+  w: number;          // half-width at the bottom, fraction of height
+  owner: Drop | null; // null once the drop stopped or was swallowed
+  age: number;        // seconds since it was let go
+  breakAt: number;
+  seed: number;
 }
 
 const rand = (a = 1, b?: number, curve: (n: number) => number = (n) => n) => {
@@ -131,7 +146,7 @@ export function mount(
   const make = (o: Partial<Drop>): Drop | null =>
     drops.length >= MAX_DROPS - 1 ? null : {
       x: 0, y: 0, r: 0, momentum: 0, momentumX: 0, spreadY: 0, lastSpawn: 0, nextSpawn: 0,
-      parent: null, isNew: true, killed: false, shrink: 0, seed: Math.random(), grow: 0, ...o,
+      parent: null, isNew: true, killed: false, shrink: 0, seed: Math.random(), grow: 0, still: 0, drip: null, ...o,
     };
 
   // Start with some drops already resting on the glass.
@@ -140,7 +155,21 @@ export function mount(
     if (d) drops.push(d);
   }
 
+  let drips: Drip[] = [];
   let time = 0;
+
+  /** A drip left alone dries into a chain of uneven beads. */
+  function breakUp(d: Drip) {
+    const a = aspect();
+    const len = Math.hypot((d.x1 - d.x0) * a, d.y1 - d.y0);
+    const w = d.w * 0.75;
+    for (let s = w * 2; s < len; s += w * rand(3, 7)) {
+      if (!chance(0.7)) continue;
+      const t = s / len;
+      const b = make({ x: d.x1 + (d.x0 - d.x1) * t, y: d.y1 + (d.y0 - d.y1) * t, r: (w / PX) * rand(0.9, 1.6), grow: 1 });
+      if (b) drops.push(b);
+    }
+  }
 
   stage.start((dt) => {
     const still = reducedMotion.matches;
@@ -222,6 +251,17 @@ export function mount(
         drop.momentum = Math.max(drop.momentum - Math.max(1, lo * 0.5 - drop.momentum) * 0.1 * ts, 0);
         drop.momentumX *= Math.pow(0.7, ts);
 
+        // A drop big enough to run starts drawing a drip.
+        if (moved) {
+          drop.still = 0;
+          if (!drop.drip && !drop.killed && drop.r > lo * 1.3) {
+            drop.drip = { x0: drop.x, y0: drop.y + drop.r * 0.4 * PX, x1: drop.x, y1: drop.y, w: 0, owner: drop, age: 0, breakAt: rand(5, 9), seed: Math.random() };
+            drips.push(drop.drip);
+          }
+        } else {
+          drop.still += dt;
+        }
+
         // It wipes the condensation where it slides.
         if (moved && !drop.killed) {
           const w = mist.width, h = mist.height, rr = drop.r * 0.43 * PX * h;
@@ -234,6 +274,30 @@ export function mount(
       }
       drops = drops.filter((d) => !d.killed).concat(born);
 
+      // Drips follow their drop while it keeps running; once it rests a while
+      // or is swallowed, the drip is let go, thins, and beads up.
+      for (const d of drips) {
+        const o = d.owner;
+        if (o && (o.killed || o.still > 1.5)) {
+          o.drip = null;
+          d.owner = null;
+        }
+        if (d.owner) {
+          d.x1 = d.owner.x;
+          d.y1 = d.owner.y + d.owner.r * 0.2 * PX;
+          d.w = Math.max(d.w, d.owner.r * 0.34 * PX);
+        } else {
+          d.age += dt;
+        }
+      }
+      const loose = drips.filter((d) => !d.owner);
+      for (let i = 0; i < drips.length - MAX_DRIPS && i < loose.length; i++) loose[i].age = Infinity;
+      drips = drips.filter((d) => {
+        if (d.age < d.breakAt && d.y0 > -0.05) return true;
+        if (d.age >= d.breakAt) breakUp(d);
+        return false;
+      });
+
       // The glass fogs up again, slowly.
       refog += dt;
       if (refog > 0.5) {
@@ -244,7 +308,12 @@ export function mount(
       }
     }
 
+    const dripShapes = drips.slice(-MAX_DRIPS).map((d): DripShape => {
+      const thin = 1 - 0.45 * Math.min(d.age / d.breakAt, 1);
+      return { x0: d.x1, y0: d.y1, x1: d.x0, y1: d.y0, w0: d.w * thin, w1: d.w * 0.55 * thin, seed: d.seed };
+    });
     water.draw({
+      drips: dripShapes,
       beads: drops.map((d): Bead => ({
         x: d.x,
         y: d.y,
@@ -265,6 +334,8 @@ export function mount(
     setSource: water.setSource,
     wipe() {
       for (const d of drops) d.shrink = 0.1 + rand(0.5);
+      drips = [];
+      for (const d of drops) d.drip = null;
       mctx.clearRect(0, 0, mist.width, mist.height);
     },
     destroy() {

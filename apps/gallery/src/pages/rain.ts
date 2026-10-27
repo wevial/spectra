@@ -15,7 +15,7 @@ panel((gui) => {
   water.add(c, 'gravity', 0, 4, 0.05);
   water.add(c, 'trail', 0, 3, 0.05);
   water.add(c, 'mist', 0, 1, 0.01).name('condensation');
-  water.add(c, 'size', 0.02, 0.15, 0.005).name('biggest drop');
+  water.add(c, 'size', 0.015, 0.12, 0.005).name('biggest drop');
   water.add(c, 'magnify', 1.5, 30, 0.5);
   water.add(c, 'angle', 10, 70, 1).name('contact angle');
   water.add(c, 'dispersion', 0, 15, 0.1);
