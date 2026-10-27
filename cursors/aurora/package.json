@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/aurora",
+  "version": "0.1.0",
+  "description": "Paint the northern lights: the cursor trail becomes an aurora curtain of rising, shimmering rays over a lake.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

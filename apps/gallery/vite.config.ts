@@ -21,6 +21,7 @@ export default defineConfig({
         lens: page('lens/index.html'),
         mycelium: page('mycelium/index.html'),
         nebula: page('nebula/index.html'),
+        aurora: page('aurora/index.html'),
       },
     },
   },

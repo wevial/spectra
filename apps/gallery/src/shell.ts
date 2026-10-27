@@ -1,6 +1,6 @@
 import GUI from 'lil-gui';
 
-export const EFFECTS = ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula'] as const;
+export const EFFECTS = ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora'] as const;
 
 const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole' };
 

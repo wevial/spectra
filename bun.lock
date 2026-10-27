@@ -12,6 +12,7 @@
     "apps/gallery": {
       "name": "@spectra/gallery",
       "dependencies": {
+        "@spectra/aurora": "workspace:*",
         "@spectra/blackhole": "workspace:*",
         "@spectra/core": "workspace:*",
         "@spectra/dither": "workspace:*",
@@ -23,6 +24,13 @@
       },
       "devDependencies": {
         "vite": "^7.1.0",
+      },
+    },
+    "cursors/aurora": {
+      "name": "@spectra/aurora",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
       },
     },
     "cursors/blackhole": {
@@ -262,6 +270,8 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.64.10", "", { "os": "win32", "cpu": "x64" }, "sha512-vrvuasIpm/xf+BpZbzgirku0WnrQZMAc+H2Ai26jzqBxYEmQQE4DdJb7h8erkJMfRRipx0ma2Cty8jJwUm9ocQ=="],
 
     "@sindresorhus/is": ["@sindresorhus/is@7.2.0", "", {}, "sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw=="],
+
+    "@spectra/aurora": ["@spectra/aurora@workspace:cursors/aurora"],
 
     "@spectra/blackhole": ["@spectra/blackhole@workspace:cursors/blackhole"],
 

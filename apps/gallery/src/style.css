@@ -109,6 +109,12 @@ body {
     radial-gradient(40% 50% at 45% 50%, rgba(236, 226, 201, 0.35), transparent 70%),
     #0d0a07;
 }
+.aurora-fallback {
+  background:
+    radial-gradient(60% 35% at 50% 45%, rgba(53, 255, 143, 0.28), transparent 70%),
+    radial-gradient(50% 25% at 55% 25%, rgba(255, 61, 122, 0.18), transparent 70%),
+    linear-gradient(#020309 0%, #08121c 70%, #020306 70.5%);
+}
 .glitch-fallback {
   background:
     linear-gradient(90deg, transparent 8%, #ff3b3b 14%, #ffd23b 18%, #3bff7a 21%, #3bc8ff 24%, #8a3bff 28%, transparent 34%),
