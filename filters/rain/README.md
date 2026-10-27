@@ -1,17 +1,17 @@
 # Rain filter
 
-A phone screen beaded with water. Every drop is a small lens over the panel:
-mid-size ones swirl with moiré rainbows or show the image upside down, tiny
-ones shrink it to a pale blur, and big ones magnify the subpixels. New rain
-lands now and then; drops that touch coalesce (a neck forms and the smaller
-drains into the bigger), and all of them slowly dry. Shows any image, canvas
-or video, or a lock screen by default. No cursor.
+Rain on a phone screen. Drops land on fogged glass, creep and lurch down it,
+leave trails of smaller drops, swallow what they run into and speed up, and
+wipe a clear track through the condensation that slowly fogs over again.
+Every drop is a small lens over the panel: moiré rainbows, upside-down
+glimpses, magnified subpixels. Shows any image, canvas or video, or a lock
+screen by default. No cursor.
 
 ```js
 import { mount } from '@spectra/rain';
 
-const screen = mount(document.querySelector('#hero'), { source: '/photo.jpg', scatter: 40 });
-screen.config.rain = 4; // live tuning, picked up next frame
+const screen = mount(document.querySelector('#hero'), { source: '/photo.jpg', rain: 8 });
+screen.config.gravity = 2; // live tuning, picked up next frame
 screen.wipe();
 screen.destroy();
 ```
@@ -20,15 +20,20 @@ See `DEFAULTS` in `src/index.ts` for every option.
 
 ## How it works
 
-The drawing is the droplet cursor's renderer (`@spectra/droplet/water`): the
-same panel, optics, moiré and glints. This package only runs the drops:
+The drop simulation follows Lucas Bebber's
+[Rain & Water Effect](https://github.com/codrops/RainEffect) (Codrops, 2015);
+the drawing is the droplet cursor's renderer (`@spectra/droplet/water`).
 
-- **Beads.** Mostly fine mist and a few big drops, spaced out at first as if
-  they had settled. Bigger ones get a slightly lumpy, pinned outline.
-- **Rain.** New drops land anywhere while there are fewer than `scatter`.
-- **Coalescence.** Drops that touch drain into the bigger one where they sit,
-  and the bigger leans toward the water as it arrives.
-- **Drying.** Every drop shrinks slowly; the smallest vanish.
+- **Stick-slip.** Each frame a drop may break free and lurch down, more
+  likely the bigger it is; friction slows it to a stop again.
+- **Trails.** A sliding drop leaves smaller drops behind, shrinking as it
+  goes, so its path is beaded with a vertical chain.
+- **Collisions.** A moving drop swallows smaller drops it runs into; the
+  added water speeds it up and nudges it sideways.
+- **Condensation.** A fine field of tiny droplets over the glass. Sliding
+  drops wipe a clear track through it (a low-res mask), which fogs over again.
+- **Shape.** Resting drops are domes with lumpy, pinned outlines; sliding
+  ones are drawn out into teardrops with the tail up.
 - **Light.** A window up and to the left, drifting a little, so the glints
   move.
 

@@ -50,6 +50,8 @@ export interface Bead {
   flat: number;
   /** 0..1, shapes its lumpy outline. */
   seed: number;
+  /** While sliding down: how far it's drawn out into a teardrop, 0..1.5. */
+  stretch?: number;
 }
 
 /** The cursor's drop: it stretches along its heading and keeps its magnification as it grows. */
@@ -68,6 +70,15 @@ export interface Frame {
   /** The lamp: position in uv, and height above the glass (fraction of height). */
   lamp: [number, number, number];
   time: number;
+  /** Condensation over the glass. */
+  mist?: {
+    /** Coverage, stretched over the screen: white fogged, black wiped clear. */
+    mask: TexImageSource;
+    /** Spacing of its droplets, CSS px. */
+    cell: number;
+    /** 0..1. */
+    amount: number;
+  };
 }
 
 export interface Water {
@@ -102,8 +113,16 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   let bins = new Uint8Array(0);
+  const mistTex = gl.createTexture()!;
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, mistTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 1, 1, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array([0]));
 
-  function draw({ beads, lead, lamp, time }: Frame) {
+  function draw({ beads, lead, lamp, time, mist }: Frame) {
     const a = canvas.clientWidth / Math.max(canvas.clientHeight, 1);
 
     // Content: the poster redraws when the panel size or the minute changes.
@@ -133,7 +152,10 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
     if (lead) uniforms.set([lead.x * a, lead.y, lead.r, 10], 0);
     // Largest first, so a crowded tile loses only the smallest drops.
     const sized = beads.filter((b) => b.r > 0).sort((x, y) => y.r - x.r).slice(0, MAX_DROPS - 1);
-    sized.forEach((b, i) => uniforms.set([b.x * a, b.y, b.r, Math.round(b.flat * 10) + Math.min(b.seed, 0.999)], (i + 1) * 4));
+    sized.forEach((b, i) => {
+      const slide = Math.min(Math.round((b.stretch ?? 0) * 40), 63);
+      uniforms.set([b.x * a, b.y, b.r, Math.round(b.flat * 10) + 16 * slide + Math.min(b.seed, 0.999)], (i + 1) * 4);
+    });
 
     const cols = Math.max(1, Math.round(TILE_ROWS * a)), rows = TILE_ROWS;
     if (bins.length !== cols * rows * BIN) bins = new Uint8Array(cols * rows * BIN);
@@ -150,12 +172,20 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
       }
     };
     if (lead) bin(0, lead.x, lead.y, lead.r * (2 + 2 * Math.abs(lead.stretch)));
-    sized.forEach((b, i) => bin(i + 1, b.x, b.y, b.r * 1.5)); // glints spill past the rim
+    sized.forEach((b, i) => bin(i + 1, b.x, b.y, b.r * (b.stretch ? 2 + 2 * b.stretch : 1.5))); // glints spill past the rim
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, binTex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, cols * BIN, rows, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, bins);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+
+    if (mist) {
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, mistTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, mist.mask);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    }
 
     const fit = content.cover(pw, ph);
     const px = canvas.clientHeight / pitch;
@@ -188,6 +218,9 @@ export function createWater(stage: Stage, look: WaterLook, initial?: Source): Wa
     gl.uniform3f(u.uLamp, lamp[0] * a, lamp[1], lamp[2]);
     gl.uniform1f(u.uSize, look.size);
     gl.uniform1f(u.uTime, time);
+    gl.uniform1i(u.uMist, 2);
+    gl.uniform1f(u.uMistCell, (mist?.cell ?? 6) / Math.max(canvas.clientHeight, 1));
+    gl.uniform1f(u.uMistAmount, mist?.amount ?? 0);
     blit(null);
   }
 

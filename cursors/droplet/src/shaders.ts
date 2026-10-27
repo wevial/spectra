@@ -31,7 +31,7 @@ uniform float uLod;         // content mip level for one panel pixel
 uniform vec2 uRes;          // drawing buffer, device px
 uniform float uAspect;
 uniform float uPx;          // panel pixels per height unit
-uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, flatness×10 + shape seed
+uniform vec4 uDrops[${MAX_DROPS}]; // center (height units), radius, packed: flatness×10 + 16 × slide stretch×40, + shape seed
 uniform float uGlass;       // cover glass thickness, height units
 uniform highp usampler2D uBins; // per tile, the drops that reach it (255: end of list)
 uniform vec2 uTiles;
@@ -49,6 +49,9 @@ uniform float uSparkle;     // strength of the star glint on big drops
 uniform vec3 uLamp;         // the lamp: position (height units), height above the glass
 uniform float uSize;        // reference drop radius
 uniform float uTime;
+uniform sampler2D uMist;    // condensation coverage: 1 fogged, 0 wiped clear by a sliding drop
+uniform float uMistCell;    // condensation spacing, height units
+uniform float uMistAmount;  // 0 for none
 out vec4 fragColor;
 
 vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
@@ -223,24 +226,30 @@ void main() {
     if (id == ${BIN_END}u) break;
     int i = int(id);
     vec4 d = uDrops[i];
+    float packed = floor(d.w);
+    float flat_ = mod(packed, 16.0) / 10.0;
+    // Drop 0 is the cursor's; the others stretch only while sliding down.
+    float stretch = i == 0 ? uStretch : floor(packed / 16.0) / 40.0;
+    vec2 dir = i == 0 ? uDir : vec2(0.0, -1.0);
+    bool moving = i == 0 || stretch > 0.0;
     vec2 o = p - d.xy;
-    float reach = d.z * (i == 0 ? 2.0 + 2.0 * abs(uStretch) : 1.5);
+    float reach = d.z * (moving ? 2.0 + 2.0 * abs(stretch) : 1.5);
     if (dot(o, o) >= reach * reach) continue;
     shine += glint(p, d);
     // The cursor's drop piles up taller as it takes on water, keeping the
     // curvature at its apex (so its magnification) as it grows.
-    float H = i == 0 ? d.z * d.z / uSize * z0 : d.z * z0 * floor(d.w) / 10.0;
+    float H = i == 0 ? d.z * d.z / uSize * z0 : d.z * z0 * flat_;
     float hi;
     vec2 g;
-    if (i == 0) {
-      // The moving drop stretches along its heading, with a tail behind.
-      vec2 perp = vec2(-uDir.y, uDir.x);
-      float tail = dot(o, uDir) < 0.0 ? 1.0 + max(uStretch, 0.0) * 0.8 : 1.0;
-      vec2 J = vec2(1.0 / ((1.0 + uStretch) * tail), 1.0 + uStretch * 0.5);
-      vec2 q = vec2(dot(o, uDir), dot(o, perp)) * J / d.z;
+    if (moving) {
+      // A moving drop stretches along its heading, with a tail behind.
+      vec2 perp = vec2(-dir.y, dir.x);
+      float tail = dot(o, dir) < 0.0 ? 1.0 + max(stretch, 0.0) * 0.8 : 1.0;
+      vec2 J = vec2(1.0 / ((1.0 + stretch) * tail), 1.0 + stretch * 0.5);
+      vec2 q = vec2(dot(o, dir), dot(o, perp)) * J / d.z;
       hi = H * (1.0 - dot(q, q));
       vec2 gf = -2.0 * H * q * J / d.z;
-      g = gf.x * uDir + gf.y * perp;
+      g = gf.x * dir + gf.y * perp;
     } else {
       // Drops pin to the glass unevenly, so bigger ones aren't quite round.
       float seed = fract(d.w) * 97.0;
@@ -251,6 +260,21 @@ void main() {
       g = -2.0 * H * o / (rr * rr);
     }
     fuse(h, grad, peak, a, center, hi, g, H, d.z, d.xy);
+  }
+  if (uMistAmount > 0.0) {
+    // Condensation: a tiny dome in most cells of a fine grid, thinning out
+    // where a sliding drop wiped the glass, until it fogs up again.
+    float fog = texture(uMist, vUv).r * uMistAmount;
+    vec2 cp = p / uMistCell;
+    vec2 id = floor(cp);
+    vec4 rnd = fract(sin(vec4(dot(id, vec2(127.1, 311.7)), dot(id, vec2(269.5, 183.3)),
+                              dot(id, vec2(419.2, 371.9)), dot(id, vec2(91.7, 233.1)))) * 43758.5453);
+    float r = (0.12 + 0.2 * rnd.z) * smoothstep(0.1, 0.7, fog) * uMistCell;
+    if (rnd.w < fog * 0.85 && r > 0.0) {
+      vec2 o = (cp - id - 0.5 - (rnd.xy - 0.5) * 0.4) * uMistCell;
+      float H = r * z0 * 0.9;
+      fuse(h, grad, peak, a, center, H * (1.0 - dot(o, o) / (r * r)), -2.0 * H * o / (r * r), H, r, (id + 0.5) * uMistCell);
+    }
   }
   vec3 N = normalize(vec3(-grad, 1.0));
   float D = uGlass + max(h, 0.0);

@@ -11,9 +11,11 @@ const picker = sourcePicker(fx.setSource);
 
 panel((gui) => {
   const water = gui.addFolder('water');
-  water.add(c, 'scatter', 0, 70, 1);
-  water.add(c, 'rain', 0, 10, 0.1).name('rain (/s)');
-  water.add(c, 'size', 0.04, 0.3, 0.005).name('biggest drop');
+  water.add(c, 'rain', 0, 30, 0.5).name('rain (/s)');
+  water.add(c, 'gravity', 0, 4, 0.05);
+  water.add(c, 'trail', 0, 3, 0.05);
+  water.add(c, 'mist', 0, 1, 0.01).name('condensation');
+  water.add(c, 'size', 0.02, 0.15, 0.005).name('biggest drop');
   water.add(c, 'magnify', 1.5, 30, 0.5);
   water.add(c, 'angle', 10, 70, 1).name('contact angle');
   water.add(c, 'dispersion', 0, 15, 0.1);

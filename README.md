@@ -17,7 +17,7 @@ WebGL2 cursor effects and image filters, plus a gallery for testing them.
 | [`cursors/filings`](cursors/filings) | Iron filings swing into field lines around a magnet you carry; click to pin magnets and combine fields |
 | [`cursors/phosphor`](cursors/phosphor) | A vector CRT where the cursor is the electron beam: phosphor flash, long afterglow, bloom |
 | [`cursors/droplet`](cursors/droplet) | A drop of water on a phone screen, carried by the cursor: it magnifies the panel into RGB subpixels |
-| [`filters/rain`](filters/rain) | A phone screen beaded with water: drops lens the image into moiré rainbows and coalesce as new rain lands |
+| [`filters/rain`](filters/rain) | Rain on a phone screen: drops slide down fogged glass leaving trails, each one a lens over the pixels. Drop physics after [Codrops' RainEffect](https://github.com/codrops/RainEffect) |
 | [`cursors/film`](cursors/film) | Holographic cracked-ice window film with the cursor as the sun: pastel shards and a burst of spectral rainbow dashes |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
