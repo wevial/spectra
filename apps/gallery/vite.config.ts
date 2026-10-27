@@ -25,6 +25,7 @@ export default defineConfig({
         riso: page('riso/index.html'),
         filings: page('filings/index.html'),
         phosphor: page('phosphor/index.html'),
+        droplet: page('droplet/index.html'),
       },
     },
   },

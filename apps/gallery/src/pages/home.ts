@@ -8,10 +8,11 @@ import { mount as aurora } from '@spectra/aurora';
 import { mount as riso } from '@spectra/riso';
 import { mount as filings } from '@spectra/filings';
 import { mount as phosphor } from '@spectra/phosphor';
+import { mount as droplet } from '@spectra/droplet';
 import { renderNav } from '../shell';
 
 renderNav();
-const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, phosphor } as const;
+const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, phosphor, droplet } as const;
 for (const card of document.querySelectorAll<HTMLElement>('[data-effect]')) {
   mounts[card.dataset.effect as keyof typeof mounts]?.(card);
 }

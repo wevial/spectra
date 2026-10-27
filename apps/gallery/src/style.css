@@ -137,6 +137,12 @@ body {
     radial-gradient(ellipse 30% 22% at 50% 50%, transparent 96%, rgba(180, 255, 60, 0.5) 98%, transparent 100%),
     radial-gradient(70% 70% at 50% 50%, #07100a, #020403);
 }
+.droplet-fallback {
+  background:
+    radial-gradient(circle at 40% 45%, rgba(255, 255, 255, 0.35) 0 9%, transparent 9.5%),
+    radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.3) 0 4%, transparent 4.5%),
+    linear-gradient(110deg, #5cb4e8, #9d93cf 45%, #c44d82 75%, #a3162e);
+}
 .glitch-fallback {
   background:
     linear-gradient(90deg, transparent 8%, #ff3b3b 14%, #ffd23b 18%, #3bff7a 21%, #3bc8ff 24%, #8a3bff 28%, transparent 34%),

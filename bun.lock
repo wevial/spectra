@@ -17,6 +17,7 @@
         "@spectra/blackhole": "workspace:*",
         "@spectra/core": "workspace:*",
         "@spectra/dither": "workspace:*",
+        "@spectra/droplet": "workspace:*",
         "@spectra/filings": "workspace:*",
         "@spectra/glitch": "workspace:*",
         "@spectra/lens": "workspace:*",
@@ -46,6 +47,13 @@
     },
     "cursors/dither": {
       "name": "@spectra/dither",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/droplet": {
+      "name": "@spectra/droplet",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
@@ -303,6 +311,8 @@
     "@spectra/core": ["@spectra/core@workspace:packages/core"],
 
     "@spectra/dither": ["@spectra/dither@workspace:cursors/dither"],
+
+    "@spectra/droplet": ["@spectra/droplet@workspace:cursors/droplet"],
 
     "@spectra/filings": ["@spectra/filings@workspace:cursors/filings"],
 
