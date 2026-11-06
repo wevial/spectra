@@ -35,8 +35,8 @@ export const DEFAULTS = {
   scale: 1,
   /** Smokiness: how hard noise billows the bands. 0 is the original's clean sine bands. */
   warp: 0.35,
-  /** Film grain; same scale as the `shaders` FilmGrain strength. */
-  grain: 0.1,
+  /** Film grain; same scale as the `shaders` FilmGrain strength (AgentMail uses 0.1). */
+  grain: 0.04,
   /** Seconds for the grain to morph into a new pattern; 0 freezes it. */
   grainPeriod: 2.5,
   /** Fade to the base over this fraction of the height, from the bottom. */
