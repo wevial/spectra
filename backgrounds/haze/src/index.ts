@@ -26,7 +26,7 @@ export const RAINBOW_BASE = '#0a0710';
 export type PaletteName = keyof typeof PALETTES | 'rainbow';
 
 export const DEFAULTS = {
-  palette: 'ember' as PaletteName,
+  palette: 'rainbow' as PaletteName,
   /** Band opacity; past 1 the soft edges fill in. */
   intensity: 1,
   /** Drift and morph speed. */

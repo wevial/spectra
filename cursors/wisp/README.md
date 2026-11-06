@@ -1,7 +1,7 @@
 # Wisp cursor
 
-The interactive [haze](../../backgrounds/haze). Smoky amber haze drifts over
-the dark, and your cursor stirs it: the haze is pushed along the stroke and
+The interactive [haze](../../backgrounds/haze). Smoky rainbow haze drifts
+over the dark, and your cursor stirs it: the haze is pushed along the stroke and
 lit where you pass, then settles back. A still cursor leaves no mark.
 
 ```js
@@ -12,9 +12,9 @@ wisp.config.ambient = 0.6; // live tuning, picked up next frame
 wisp.destroy();
 ```
 
-Palettes are haze's: `ember` (default), `rose`, `teal`, `dusk`, `lagoon`, and
-`rainbow`, whose hue sweeps across the box, drifts over time and bends along
-the smoke (see `PALETTES`). The base is the dark, the mid color is the haze
+Palettes are haze's: `rainbow` (default), whose hue sweeps across the box,
+drifts over time and bends along the smoke; `ember`, `rose`, `teal`, `dusk`
+and `lagoon` (see `PALETTES`). The base is the dark, the mid color is the haze
 and the highlight is where it's lit. See `DEFAULTS` in `src/index.ts` for every
 option.
 

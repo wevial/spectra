@@ -13,9 +13,9 @@ haze.config.warp = 0.8; // live tuning, picked up next frame
 haze.destroy();
 ```
 
-Palettes: `ember` (default, the AgentMail look), `rose`, `teal`, the two-color
-`dusk` and `lagoon`, and `rainbow`, whose bands take a hue that sweeps across
-the box and drifts over time (see `PALETTES`). `warp: 0` gives the original's
+Palettes: `rainbow` (default), whose bands take a hue that sweeps across the
+box and drifts over time; `ember`, the AgentMail look; `rose`, `teal`, and the
+two-color `dusk` and `lagoon` (see `PALETTES`). `warp: 0` gives the original's
 clean sine bands. See `DEFAULTS` in `src/index.ts` for every option.
 
 ## How it works

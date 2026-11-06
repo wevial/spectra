@@ -21,7 +21,7 @@ React to the mouse.
 | [`cursors/filings`](cursors/filings) | Iron filings swing into field lines around a magnet you carry; click to pin magnets and combine fields |
 | [`cursors/phosphor`](cursors/phosphor) | A vector CRT where the cursor is the electron beam: phosphor flash, long afterglow, bloom |
 | [`cursors/film`](cursors/film) | Holographic cracked-ice window film with the cursor as the sun: pastel shards and a burst of spectral rainbow dashes |
-| [`cursors/wisp`](cursors/wisp) | The interactive haze: your cursor stirs smoky amber haze, pushing it along the stroke and lighting it where you pass |
+| [`cursors/wisp`](cursors/wisp) | The interactive haze: your cursor stirs smoky rainbow haze, pushing it along the stroke and lighting it where you pass |
 
 ### Backgrounds
 
@@ -29,7 +29,7 @@ No cursor.
 
 | Effect | |
 |---|---|
-| [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of amber smoke over warm black, film grain, edge fades |
+| [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of rainbow smoke over warm black, film grain, edge fades |
 | [`backgrounds/paint-drift`](backgrounds/paint-drift) | The nebula's gas as wet paint on paper: invisible brushes pull lanes through it on their own, and it always heals back |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`

@@ -16,7 +16,7 @@ export { PALETTES, RAINBOW_BASE };
 export type PaletteName = keyof typeof PALETTES | 'rainbow';
 
 export const DEFAULTS = {
-  palette: 'ember' as PaletteName,
+  palette: 'rainbow' as PaletteName,
   /** Haze and light opacity; past 1 the brightest light burns toward white. */
   intensity: 1,
   /** How bright the haze is everywhere. */
