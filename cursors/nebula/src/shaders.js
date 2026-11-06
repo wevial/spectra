@@ -242,7 +242,9 @@ void main() {
 `;
 
 // Final pass: deep-space background gradient, parallax star layers whose glow
-// is gated by local nebula gas, then the nebula composited on top.
+// is gated by local nebula gas, then the nebula composited on top. With
+// uPaint, none of the space: the gas is laid over a flat ground as opaque
+// pigment instead of glowing, like paint.
 export const COMPOSITE = /* glsl */ `#version 300 es
 precision highp float;
 in vec2 vUv;
@@ -250,6 +252,8 @@ out vec4 outColor;
 uniform sampler2D uDye;
 uniform float uTime;
 uniform float uAspect;
+uniform float uPaint;   // 1: paint look
+uniform vec3 uGround;   // paint look's ground color
 ${NOISE_GLSL}
 
 // Deep-space vertical gradient: near-black violet up top, a touch warmer low.
@@ -298,7 +302,22 @@ float starLayer(vec2 uv, float cells, float density) {
   return star * star * bright;
 }
 
+// Paint: the gas's hue at full strength, its strength as coverage. Dust
+// lanes read as darker streaks in the paint.
+vec3 paint(vec4 dye) {
+  float m = max(max(dye.r, dye.g), dye.b);
+  vec3 pigment = dye.rgb / max(m, 1e-4) * 0.9;
+  float cover = 1.0 - exp(-m * 2.6);
+  vec3 col = mix(uGround, pigment, cover);
+  return col * (1.0 - dye.a * 0.35);
+}
+
 void main() {
+  if (uPaint > 0.5) {
+    vec3 col = paint(texture(uDye, vUv));
+    outColor = vec4(col + (hash12(gl_FragCoord.xy + fract(uTime) * 61.7) - 0.5) / 255.0 * 2.0, 1.0);
+    return;
+  }
   vec3 col = skyColor(vUv.y);
   vec2 suv = vec2(vUv.x * uAspect, vUv.y);
 

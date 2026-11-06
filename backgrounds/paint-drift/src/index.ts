@@ -13,6 +13,8 @@ export interface PaintDriftOptions {
   currents?: number;
   /** Drift speed of the cloud and the currents. */
   speed?: number;
+  /** Ground color under the paint, hex. Default a cream paper. */
+  ground?: string;
   /** Lock a quality tier, 0–3 (4 = static fallback). */
   tier?: number;
   /** Log the quality governor's decisions. */
@@ -26,5 +28,5 @@ export interface PaintDriftOptions {
  * class instead.
  */
 export function mount(container: HTMLElement, opts: PaintDriftOptions = {}) {
-  return mountNebula(container, { ...opts, cursor: false });
+  return mountNebula(container, { ground: '#efe8dc', ...opts, cursor: false, look: 'paint' });
 }

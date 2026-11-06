@@ -17,7 +17,7 @@ export { CONFIG };
  * Without WebGL2 + float targets the container gets the `nebula-fallback`
  * class instead, for a static CSS gradient.
  * @param {HTMLElement} container
- * @param {{ tier?: number, debug?: boolean, cursor?: boolean, currents?: number, speed?: number }} [opts]
+ * @param {{ tier?: number, debug?: boolean, cursor?: boolean, currents?: number, speed?: number, look?: 'space' | 'paint', ground?: string }} [opts]
  */
 export function mount(container, opts = {}) {
   const cursor = opts.cursor ?? true;
@@ -61,6 +61,8 @@ export function mount(container, opts = {}) {
   fluid = new FluidSim(gl, TIERS[governor.tier]);
   fluid.config.currents = opts.currents ?? (cursor ? 0 : 1);
   if (opts.speed != null) fluid.config.speed = opts.speed;
+  if (opts.look) fluid.config.look = opts.look;
+  if (opts.ground) fluid.config.ground = opts.ground;
   const composite = new Program(gl, VERTEX, COMPOSITE);
   const blit = makeBlit(gl);
 
@@ -117,11 +119,14 @@ export function mount(container, opts = {}) {
     gl.uniform1i(composite.uniforms.uDye, fluid.cloud.attach(0));
     gl.uniform1f(composite.uniforms.uTime, time);
     gl.uniform1f(composite.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+    gl.uniform1f(composite.uniforms.uPaint, fluid.config.look === 'paint' ? 1 : 0);
+    const g = parseInt(fluid.config.ground.slice(1), 16);
+    gl.uniform3f(composite.uniforms.uGround, (g >> 16 & 255) / 255, (g >> 8 & 255) / 255, (g & 255) / 255);
     blit(null);
   });
 
   return {
-    /** Live tuning: velocityDissipation, offsetDecay, splatForce, speed, currents. */
+    /** Live tuning: velocityDissipation, offsetDecay, splatForce, speed, currents, look, ground. */
     config: fluid.config,
     destroy: () => stage.destroy(),
   };

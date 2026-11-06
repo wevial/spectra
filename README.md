@@ -30,7 +30,7 @@ No cursor.
 | Effect | |
 |---|---|
 | [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of amber smoke over warm black, film grain, edge fades |
-| [`backgrounds/paint-drift`](backgrounds/paint-drift) | The nebula's gas dragged like wet paint: invisible brushes pull lanes through it on their own, and it always heals back |
+| [`backgrounds/paint-drift`](backgrounds/paint-drift) | The nebula's gas as wet paint on paper: invisible brushes pull lanes through it on their own, and it always heals back |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
 is live: change a field and the next frame uses it.

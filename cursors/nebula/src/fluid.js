@@ -20,6 +20,8 @@ export const CONFIG = {
   splatForce: 2600,          // pointer velocity -> sim velocity multiplier
   speed: 1,                  // drift speed of the cloud
   currents: 0,               // ambient wanderers stirring the gas (0 = none)
+  look: 'space',             // 'space': stars and glowing gas; 'paint': pigment on a flat ground
+  ground: '#0d0a14',         // the paint look's ground color
 };
 
 export class FluidSim {

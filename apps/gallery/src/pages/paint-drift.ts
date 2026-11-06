@@ -15,6 +15,7 @@ const fx = mount(document.getElementById('stage')!, {
 const c = fx.config;
 
 panel((gui) => {
+  gui.addColor(c, 'ground');
   gui.add(c, 'currents', 0, 4, 0.05);
   gui.add(c, 'speed', 0, 5, 0.05).name('drift');
   gui.add(c, 'offsetDecay', 0.1, 4, 0.05).name('heal rate');
