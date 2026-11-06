@@ -6,6 +6,7 @@
     "packages/*",
     "cursors/*",
     "filters/*",
+    "backgrounds/*",
     "apps/*"
   ],
   "scripts": {

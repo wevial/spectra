@@ -28,6 +28,7 @@ export default defineConfig({
         droplet: page('droplet/index.html'),
         rain: page('rain/index.html'),
         film: page('film/index.html'),
+        haze: page('haze/index.html'),
       },
     },
   },

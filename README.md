@@ -1,6 +1,6 @@
 # spectra
 
-WebGL2 cursor effects and image filters, plus a gallery for testing them.
+WebGL2 cursor effects, image filters and ambient backgrounds, plus a gallery for testing them.
 
 **[Gallery →](https://spectra.kovial.co)** (desktop, move your mouse through it)
 
@@ -19,6 +19,7 @@ WebGL2 cursor effects and image filters, plus a gallery for testing them.
 | [`cursors/droplet`](cursors/droplet) | A drop of water on a phone screen, carried by the cursor: it magnifies the panel into RGB subpixels |
 | [`filters/rain`](filters/rain) | Rain on a phone screen: drops slide down fogged glass leaving trails, each one a lens over the pixels. Drop physics after [Codrops' RainEffect](https://github.com/codrops/RainEffect) |
 | [`cursors/film`](cursors/film) | Holographic cracked-ice window film with the cursor as the sun: pastel shards and a burst of spectral rainbow dashes |
+| [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of amber smoke over warm black, film grain, edge fades. No cursor |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
 is live: change a field and the next frame uses it.
@@ -42,10 +43,12 @@ puts your tweaks on the clipboard as the options object for `mount()`.
 ```
 packages/core   WebGL2 helpers, stage (canvas, pointer, render loop, adaptive resolution), cursor trail, GLSL noise, content sources
 cursors/*       one package per cursor effect
+filters/*       one package per image filter
+backgrounds/*   one package per ambient background (no pointer)
 apps/gallery    Vite multi-page site, one page per effect
 ```
 
-Adding an effect: create `cursors/<name>` exporting `mount`, add
+Adding an effect: create `cursors/<name>` (or `filters/`, `backgrounds/`) exporting `mount`, add
 `apps/gallery/<name>/index.html` and `src/pages/<name>.ts`, register it in
 `vite.config.ts` and `EFFECTS` in `src/shell.ts`.
 

@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/haze",
+  "version": "0.1.0",
+  "description": "An ambient smoky glow: soft amber smoke drifting over near-black warm brown, with live film grain and in-shader edge fades.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

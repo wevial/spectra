@@ -16,6 +16,7 @@
     "@spectra/film": "workspace:*",
     "@spectra/filings": "workspace:*",
     "@spectra/glitch": "workspace:*",
+    "@spectra/haze": "workspace:*",
     "@spectra/lens": "workspace:*",
     "@spectra/mycelium": "workspace:*",
     "@spectra/nebula": "workspace:*",

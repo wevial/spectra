@@ -21,6 +21,7 @@
         "@spectra/filings": "workspace:*",
         "@spectra/film": "workspace:*",
         "@spectra/glitch": "workspace:*",
+        "@spectra/haze": "workspace:*",
         "@spectra/lens": "workspace:*",
         "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
@@ -31,6 +32,13 @@
       },
       "devDependencies": {
         "vite": "^7.1.0",
+      },
+    },
+    "backgrounds/haze": {
+      "name": "@spectra/haze",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
       },
     },
     "cursors/aurora": {
@@ -338,6 +346,8 @@
     "@spectra/gallery": ["@spectra/gallery@workspace:apps/gallery"],
 
     "@spectra/glitch": ["@spectra/glitch@workspace:cursors/glitch"],
+
+    "@spectra/haze": ["@spectra/haze@workspace:backgrounds/haze"],
 
     "@spectra/lens": ["@spectra/lens@workspace:cursors/lens"],
 
