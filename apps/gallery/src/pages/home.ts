@@ -7,7 +7,6 @@ import { mount as nebula } from '@spectra/nebula';
 import { mount as aurora } from '@spectra/aurora';
 import { mount as riso } from '@spectra/riso';
 import { mount as filings } from '@spectra/filings';
-import { mount as phosphor } from '@spectra/phosphor';
 import { mount as film } from '@spectra/film';
 import { mount as haze } from '@spectra/haze';
 import { mount as wisp } from '@spectra/wisp';
@@ -15,7 +14,7 @@ import { mount as paintDrift } from '@spectra/paint-drift';
 import { renderNav } from '../shell';
 
 renderNav();
-const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, phosphor, film, haze, wisp, 'paint-drift': paintDrift } as const;
+const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, film, haze, wisp, 'paint-drift': paintDrift } as const;
 for (const card of document.querySelectorAll<HTMLElement>('[data-effect]')) {
   mounts[card.dataset.effect as keyof typeof mounts]?.(card);
 }

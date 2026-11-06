@@ -19,7 +19,6 @@ React to the mouse.
 | [`cursors/aurora`](cursors/aurora) | Paint the northern lights: your trail becomes a curtain of rising, shimmering rays over a lake |
 | [`cursors/riso`](cursors/riso) | Any image as a risograph print: spot-ink halftones on paper; the cursor knocks the layers out of register |
 | [`cursors/filings`](cursors/filings) | Iron filings swing into field lines around a magnet you carry; click to pin magnets and combine fields |
-| [`cursors/phosphor`](cursors/phosphor) | A vector CRT where the cursor is the electron beam: phosphor flash, long afterglow, bloom |
 | [`cursors/film`](cursors/film) | Holographic cracked-ice window film with the cursor as the sun: pastel shards and a burst of spectral rainbow dashes |
 | [`cursors/wisp`](cursors/wisp) | The interactive haze: your cursor stirs smoky rainbow haze, pushing it along the stroke and lighting it where you pass |
 

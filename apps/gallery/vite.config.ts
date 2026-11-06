@@ -24,7 +24,6 @@ export default defineConfig({
         aurora: page('aurora/index.html'),
         riso: page('riso/index.html'),
         filings: page('filings/index.html'),
-        phosphor: page('phosphor/index.html'),
         film: page('film/index.html'),
         haze: page('haze/index.html'),
         'paint-drift': page('paint-drift/index.html'),
