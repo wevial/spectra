@@ -3,7 +3,7 @@
 // and billowed by domain-warped noise, under live film grain, fading out
 // toward the edges. Ignores the pointer.
 
-import { Program, VERTEX, makeBlit, createStage, createFBO } from '@spectra/core';
+import { Program, VERTEX, makeBlit, createStage, createFBO, setGrain } from '@spectra/core';
 import type { FBO } from '@spectra/core';
 import { GLOW, COMPOSITE } from './shaders';
 
@@ -148,10 +148,7 @@ export function mount(container: HTMLElement, opts: Partial<HazeConfig> = {}): H
     gl.uniform1f(u.uReveal, 1 - Math.pow(1 - reveal, 3));
     gl.uniform1f(u.uFadeBottom, config.fadeBottom);
     gl.uniform1f(u.uFadeSide, config.fadeSide);
-    gl.uniform1f(u.uGrain, config.grain);
-    const g = Math.floor(grainClock);
-    gl.uniform2f(u.uGrainSeeds, g % 256, (g + 1) % 256);
-    gl.uniform1f(u.uGrainMix, grainClock - g);
+    setGrain(gl, u, config.grain, grainClock);
     gl.uniform1f(u.uRainbow, rainbow ? 1 : 0);
     gl.uniform1f(u.uHue, time * 0.08 + (s ? hash(s + 6) * TAU : 0));
     blit(null);

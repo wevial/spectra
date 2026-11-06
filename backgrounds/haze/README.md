@@ -29,7 +29,7 @@ that math to two WebGL2 passes:
    sine curve rotated to a lean, `thickness` wide with `smoothstep` edges
    `softness` wide; the bands slide along their sines at different speeds, so
    they morph over 15–60s. Before sampling them the uv is displaced twice: by
-   the original's slow sine wave, and by fbm warped by fbm (`NOISE` from
+   the original's slow sine wave, and by fbm warped by fbm (`SMOKE` from
    `@spectra/core`), scaled by `warp`, which turns smooth bends into billows.
    Lengths are in units of the box height, capped at a quarter of its longer
    side, so a short wide header matches the original and a full screen still
@@ -38,7 +38,7 @@ that math to two WebGL2 passes:
    laid over the base in Oklab. Fades thin the result back to the base in
    Oklab too: an eased `pow` curve up from the bottom and a `pow` ramp from one
    side, shaped like the original's scrims. Then a slight vignette and film
-   grain: a per-pixel hash added in linear light and weighted toward the
+   grain (`GRAIN` from `@spectra/core`): a per-pixel hash added in linear light and weighted toward the
    darks, so it reads as grain in the shadows without graying the smoke. It
    doesn't flicker per frame: two patterns crossfade over `grainPeriod`
    seconds, rescaled so the grain stays equally strong mid-fade.
