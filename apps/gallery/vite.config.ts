@@ -25,8 +25,6 @@ export default defineConfig({
         riso: page('riso/index.html'),
         filings: page('filings/index.html'),
         phosphor: page('phosphor/index.html'),
-        droplet: page('droplet/index.html'),
-        rain: page('rain/index.html'),
         film: page('film/index.html'),
         haze: page('haze/index.html'),
         wisp: page('wisp/index.html'),

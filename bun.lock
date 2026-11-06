@@ -17,7 +17,6 @@
         "@spectra/blackhole": "workspace:*",
         "@spectra/core": "workspace:*",
         "@spectra/dither": "workspace:*",
-        "@spectra/droplet": "workspace:*",
         "@spectra/filings": "workspace:*",
         "@spectra/film": "workspace:*",
         "@spectra/glitch": "workspace:*",
@@ -26,7 +25,6 @@
         "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
         "@spectra/phosphor": "workspace:*",
-        "@spectra/rain": "workspace:*",
         "@spectra/riso": "workspace:*",
         "@spectra/wisp": "workspace:*",
         "lil-gui": "^0.20.0",
@@ -58,13 +56,6 @@
     },
     "cursors/dither": {
       "name": "@spectra/dither",
-      "version": "0.1.0",
-      "dependencies": {
-        "@spectra/core": "workspace:*",
-      },
-    },
-    "cursors/droplet": {
-      "name": "@spectra/droplet",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
@@ -132,14 +123,6 @@
       "dependencies": {
         "@spectra/core": "workspace:*",
         "@spectra/haze": "workspace:*",
-      },
-    },
-    "filters/rain": {
-      "name": "@spectra/rain",
-      "version": "0.1.0",
-      "dependencies": {
-        "@spectra/core": "workspace:*",
-        "@spectra/droplet": "workspace:*",
       },
     },
     "packages/core": {
@@ -346,8 +329,6 @@
 
     "@spectra/dither": ["@spectra/dither@workspace:cursors/dither"],
 
-    "@spectra/droplet": ["@spectra/droplet@workspace:cursors/droplet"],
-
     "@spectra/filings": ["@spectra/filings@workspace:cursors/filings"],
 
     "@spectra/film": ["@spectra/film@workspace:cursors/film"],
@@ -365,8 +346,6 @@
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
 
     "@spectra/phosphor": ["@spectra/phosphor@workspace:cursors/phosphor"],
-
-    "@spectra/rain": ["@spectra/rain@workspace:filters/rain"],
 
     "@spectra/riso": ["@spectra/riso@workspace:cursors/riso"],
 
