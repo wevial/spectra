@@ -29,23 +29,80 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--line);
-  /* Scrolls sideways rather than wrapping when the effects outgrow the screen. */
-  max-width: calc(100vw - 32px);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.nav::-webkit-scrollbar { display: none; }
-.nav a {
+.nav a,
+.nav button {
   white-space: nowrap;
   color: var(--muted);
+  font: inherit;
   text-decoration: none;
   padding: 6px 12px;
+  border: 0;
   border-radius: 999px;
+  background: none;
+  cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.nav a:hover { color: var(--fg); }
-.nav a[aria-current='page'] { color: var(--fg); background: rgba(236, 230, 242, 0.1); }
+.nav a:hover,
+.nav button:hover { color: var(--fg); }
 .nav .brand { color: var(--fg); font-weight: 500; }
+.nav .current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+  background: rgba(236, 230, 242, 0.1);
+}
+.nav .current svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
+
+/* Every effect, by kind, under the bar. */
+.menu {
+  position: fixed;
+  inset: 64px auto auto 16px;
+  margin: 0;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(11, 9, 16, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--fg);
+}
+.menu section + section { margin-top: 12px; }
+.menu h2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  padding: 4px 8px 6px;
+}
+.menu section {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+.menu h2 { grid-column: 1 / -1; }
+.menu a {
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.menu a:hover,
+.menu a:focus-visible { color: var(--fg); background: rgba(236, 230, 242, 0.06); outline: none; }
+.menu a[aria-current='page'] { color: var(--fg); background: rgba(236, 230, 242, 0.1); }
 
 /* Full-viewport effect page. */
 .stage {
@@ -54,14 +111,23 @@ body {
   touch-action: none;
 }
 
-/* Home: a live, hoverable preview of every effect. */
+/* Home: a live, hoverable preview of every effect, by kind. */
+.sections {
+  padding: 80px 16px 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.sections h2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0 0 12px 4px;
+}
+.grid + h2 { margin-top: 40px; }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   gap: 16px;
-  padding: 80px 16px 16px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 .card {
   position: relative;

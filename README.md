@@ -4,6 +4,10 @@ WebGL2 cursor effects, image filters and ambient backgrounds, plus a gallery for
 
 **[Gallery →](https://spectra.kovial.co)** (desktop, move your mouse through it)
 
+### Cursors
+
+React to the mouse.
+
 | Effect | |
 |---|---|
 | [`cursors/glitch`](cursors/glitch) | Pixel-block tearing with an RGB split over a retro rainbow still life. Adapted from [macroscope.com](https://macroscope.com/) |
@@ -17,10 +21,17 @@ WebGL2 cursor effects, image filters and ambient backgrounds, plus a gallery for
 | [`cursors/filings`](cursors/filings) | Iron filings swing into field lines around a magnet you carry; click to pin magnets and combine fields |
 | [`cursors/phosphor`](cursors/phosphor) | A vector CRT where the cursor is the electron beam: phosphor flash, long afterglow, bloom |
 | [`cursors/droplet`](cursors/droplet) | A drop of water on a phone screen, carried by the cursor: it magnifies the panel into RGB subpixels |
-| [`filters/rain`](filters/rain) | Rain on a phone screen: drops slide down fogged glass leaving trails, each one a lens over the pixels. Drop physics after [Codrops' RainEffect](https://github.com/codrops/RainEffect) |
 | [`cursors/film`](cursors/film) | Holographic cracked-ice window film with the cursor as the sun: pastel shards and a burst of spectral rainbow dashes |
 | [`cursors/wisp`](cursors/wisp) | The interactive haze: your cursor stirs smoky amber haze, pushing it along the stroke and lighting it where you pass |
-| [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of amber smoke over warm black, film grain, edge fades. No cursor |
+
+### Backgrounds
+
+No cursor: ambient, or a filter over an image.
+
+| Effect | |
+|---|---|
+| [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of amber smoke over warm black, film grain, edge fades |
+| [`filters/rain`](filters/rain) | Rain on a phone screen: drops slide down fogged glass leaving trails, each one a lens over the pixels. Drop physics after [Codrops' RainEffect](https://github.com/codrops/RainEffect) |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
 is live: change a field and the next frame uses it.

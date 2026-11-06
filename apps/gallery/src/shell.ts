@@ -1,16 +1,42 @@
 import GUI from 'lil-gui';
 
-export const EFFECTS = ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'phosphor', 'droplet', 'rain', 'film', 'haze', 'wisp'] as const;
+/** Every effect by kind: cursor effects react to the mouse, backgrounds don't. */
+export const GROUPS = {
+  cursors: ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'phosphor', 'droplet', 'film', 'wisp'],
+  backgrounds: ['haze', 'rain'],
+} as const;
+
+export const EFFECTS = [...GROUPS.cursors, ...GROUPS.backgrounds];
 
 const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole', film: 'rainbow film' };
 
+/**
+ * The top bar: the brand, and on an effect page that effect's name, which
+ * opens a menu of every effect by kind. Stays two items wide at any screen
+ * width. Home needs no menu: the page is the index.
+ */
 export function renderNav() {
   const nav = document.querySelector<HTMLElement>('.nav')!;
-  const current = nav.dataset.current;
-  nav.innerHTML = [
-    `<a class="brand" href="/"${current === 'home' ? ' aria-current="page"' : ''}>spectra</a>`,
-    ...EFFECTS.map((e) => `<a href="/${e}/"${e === current ? ' aria-current="page"' : ''}>${LABELS[e] ?? e}</a>`),
-  ].join('');
+  const current = nav.dataset.current as (typeof EFFECTS)[number] | 'home';
+  if (current === 'home') {
+    nav.innerHTML = `<a class="brand" href="/" aria-current="page">spectra</a>`;
+    return;
+  }
+  nav.innerHTML = `<a class="brand" href="/">spectra</a>`
+    + `<button class="current" popovertarget="effects">${LABELS[current] ?? current}`
+    + `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" /></svg></button>`;
+
+  // The menu lives on body: popovers render in the top layer, but keeping it
+  // out of the bar's blur and overflow keeps its positioning plain.
+  const menu = document.createElement('div');
+  menu.id = 'effects';
+  menu.className = 'menu';
+  menu.popover = 'auto';
+  menu.innerHTML = Object.entries(GROUPS).map(([kind, group]) =>
+    `<section><h2>${kind}</h2>${group.map((e) =>
+      `<a href="/${e}/"${e === current ? ' aria-current="page"' : ''}>${LABELS[e] ?? e}</a>`).join('')}</section>`,
+  ).join('');
+  document.body.appendChild(menu);
 }
 
 /**
