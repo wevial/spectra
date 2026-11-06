@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/paint-drift",
+  "version": "0.1.0",
+  "description": "The nebula's gas dragged like wet paint: invisible brushes pull lanes through it on their own, and it heals back.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/nebula": "workspace:*"
+  }
+}

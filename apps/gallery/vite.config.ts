@@ -27,6 +27,7 @@ export default defineConfig({
         phosphor: page('phosphor/index.html'),
         film: page('film/index.html'),
         haze: page('haze/index.html'),
+        'paint-drift': page('paint-drift/index.html'),
         wisp: page('wisp/index.html'),
       },
     },

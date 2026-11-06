@@ -19,6 +19,7 @@
     "@spectra/lens": "workspace:*",
     "@spectra/mycelium": "workspace:*",
     "@spectra/nebula": "workspace:*",
+    "@spectra/paint-drift": "workspace:*",
     "@spectra/phosphor": "workspace:*",
     "@spectra/riso": "workspace:*",
     "@spectra/wisp": "workspace:*",

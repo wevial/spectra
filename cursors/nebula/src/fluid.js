@@ -18,6 +18,8 @@ export const CONFIG = {
   velocityDissipation: 1.4,  // 1/s — cursor momentum settles quickly
   offsetDecay: 0.9,          // 1/s — the bent cloud closes back in ~1s
   splatForce: 2600,          // pointer velocity -> sim velocity multiplier
+  speed: 1,                  // drift speed of the cloud
+  currents: 0,               // ambient wanderers stirring the gas (0 = none)
 };
 
 export class FluidSim {
@@ -101,7 +103,7 @@ export class FluidSim {
   step(dt) {
     const gl = this.gl;
     const { programs: pr, velocity, pressure, divergence, offset, blit, config } = this;
-    this.time += dt;
+    this.time += dt * config.speed;
 
     gl.disable(gl.BLEND);
 

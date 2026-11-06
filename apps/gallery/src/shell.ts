@@ -3,12 +3,12 @@ import GUI from 'lil-gui';
 /** Every effect by kind: cursor effects react to the mouse, backgrounds don't. */
 export const GROUPS = {
   cursors: ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'phosphor', 'film', 'wisp'],
-  backgrounds: ['haze'],
+  backgrounds: ['haze', 'paint-drift'],
 } as const;
 
 export const EFFECTS = [...GROUPS.cursors, ...GROUPS.backgrounds];
 
-const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole', film: 'rainbow film' };
+const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole', film: 'rainbow film', 'paint-drift': 'paint drift' };
 
 /**
  * The top bar: the brand, and on an effect page that effect's name, which
