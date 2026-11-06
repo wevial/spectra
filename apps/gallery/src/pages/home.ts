@@ -12,10 +12,11 @@ import { mount as droplet } from '@spectra/droplet';
 import { mount as rain } from '@spectra/rain';
 import { mount as film } from '@spectra/film';
 import { mount as haze } from '@spectra/haze';
+import { mount as wisp } from '@spectra/wisp';
 import { renderNav } from '../shell';
 
 renderNav();
-const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, phosphor, droplet, rain, film, haze } as const;
+const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, phosphor, droplet, rain, film, haze, wisp } as const;
 for (const card of document.querySelectorAll<HTMLElement>('[data-effect]')) {
   mounts[card.dataset.effect as keyof typeof mounts]?.(card);
 }

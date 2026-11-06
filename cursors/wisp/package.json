@@ -1,0 +1,12 @@
+{
+  "name": "@spectra/wisp",
+  "version": "0.1.0",
+  "description": "The interactive haze: the cursor stirs smoky haze, pushing it along the stroke and lighting it where you pass.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*",
+    "@spectra/haze": "workspace:*"
+  }
+}

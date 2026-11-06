@@ -28,6 +28,7 @@
         "@spectra/phosphor": "workspace:*",
         "@spectra/rain": "workspace:*",
         "@spectra/riso": "workspace:*",
+        "@spectra/wisp": "workspace:*",
         "lil-gui": "^0.20.0",
       },
       "devDependencies": {
@@ -123,6 +124,14 @@
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
+      },
+    },
+    "cursors/wisp": {
+      "name": "@spectra/wisp",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+        "@spectra/haze": "workspace:*",
       },
     },
     "filters/rain": {
@@ -360,6 +369,8 @@
     "@spectra/rain": ["@spectra/rain@workspace:filters/rain"],
 
     "@spectra/riso": ["@spectra/riso@workspace:cursors/riso"],
+
+    "@spectra/wisp": ["@spectra/wisp@workspace:cursors/wisp"],
 
     "@speed-highlight/core": ["@speed-highlight/core@1.2.24", "", {}, "sha512-qeW2e1l78afw8VhRPfPQ1Gjj+KU5XFQ/OFV5ti6eTa9bruO7mJyZtA4vw0ofqmA3tKCkROE9xLk3VZoeRc98nw=="],
 

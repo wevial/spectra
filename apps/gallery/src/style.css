@@ -162,6 +162,12 @@ body {
     linear-gradient(transparent 30%, #120602 100%),
     #120602;
 }
+.wisp-fallback {
+  background:
+    radial-gradient(40% 35% at 35% 40%, rgba(155, 59, 26, 0.35), transparent 70%),
+    radial-gradient(35% 30% at 70% 60%, rgba(155, 59, 26, 0.3), transparent 70%),
+    #120602;
+}
 .glitch-fallback {
   background:
     linear-gradient(90deg, transparent 8%, #ff3b3b 14%, #ffd23b 18%, #3bff7a 21%, #3bc8ff 24%, #8a3bff 28%, transparent 34%),

@@ -23,6 +23,7 @@
     "@spectra/phosphor": "workspace:*",
     "@spectra/rain": "workspace:*",
     "@spectra/riso": "workspace:*",
+    "@spectra/wisp": "workspace:*",
     "lil-gui": "^0.20.0"
   },
   "devDependencies": {

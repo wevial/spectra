@@ -29,6 +29,7 @@ export default defineConfig({
         rain: page('rain/index.html'),
         film: page('film/index.html'),
         haze: page('haze/index.html'),
+        wisp: page('wisp/index.html'),
       },
     },
   },

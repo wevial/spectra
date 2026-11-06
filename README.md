@@ -19,6 +19,7 @@ WebGL2 cursor effects, image filters and ambient backgrounds, plus a gallery for
 | [`cursors/droplet`](cursors/droplet) | A drop of water on a phone screen, carried by the cursor: it magnifies the panel into RGB subpixels |
 | [`filters/rain`](filters/rain) | Rain on a phone screen: drops slide down fogged glass leaving trails, each one a lens over the pixels. Drop physics after [Codrops' RainEffect](https://github.com/codrops/RainEffect) |
 | [`cursors/film`](cursors/film) | Holographic cracked-ice window film with the cursor as the sun: pastel shards and a burst of spectral rainbow dashes |
+| [`cursors/wisp`](cursors/wisp) | The interactive haze: your cursor stirs smoky amber haze, pushing it along the stroke and lighting it where you pass |
 | [`backgrounds/haze`](backgrounds/haze) | An ambient smoky glow after the AgentMail console header: two leaning bands of amber smoke over warm black, film grain, edge fades. No cursor |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
@@ -41,7 +42,7 @@ puts your tweaks on the clipboard as the options object for `mount()`.
 ## Layout
 
 ```
-packages/core   WebGL2 helpers, stage (canvas, pointer, render loop, adaptive resolution), cursor trail, GLSL noise, content sources
+packages/core   WebGL2 helpers, stage (canvas, pointer, render loop, adaptive resolution), cursor trail, GLSL chunks (noise, smoke, Oklab, film grain), content sources
 cursors/*       one package per cursor effect
 filters/*       one package per image filter
 backgrounds/*   one package per ambient background (no pointer)
