@@ -12,10 +12,14 @@ export interface NebulaConfig {
   currents: number;
   /** 'space': stars and glowing gas. 'paint': pigment on a flat ground. */
   look: 'space' | 'paint';
+  /** The paint look's palette, a key of PAINTS. Changing it resets ground. */
+  paint: string;
   /** The paint look's ground color, hex. */
   ground: string;
 }
 export const CONFIG: NebulaConfig;
+/** Paint-look palettes: inks for the gas's fringe, middle, core and hot core, over a ground. */
+export const PAINTS: Record<string, { inks: [string, string, string, string]; ground: string }>;
 export function mount(
   container: HTMLElement,
   opts?: {
@@ -27,6 +31,7 @@ export function mount(
     currents?: number;
     speed?: number;
     look?: 'space' | 'paint';
+    paint?: string;
     ground?: string;
   },
 ): { config: NebulaConfig; destroy(): void };

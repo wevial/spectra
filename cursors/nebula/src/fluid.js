@@ -21,7 +21,8 @@ export const CONFIG = {
   speed: 1,                  // drift speed of the cloud
   currents: 0,               // ambient wanderers stirring the gas (0 = none)
   look: 'space',             // 'space': stars and glowing gas; 'paint': pigment on a flat ground
-  ground: '#0d0a14',         // the paint look's ground color
+  paint: 'nebula',           // the paint look's palette (see PAINTS); changing it resets ground
+  ground: '#efe8dc',         // the paint look's ground color
 };
 
 export class FluidSim {

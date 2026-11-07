@@ -9,15 +9,16 @@ import { Program, makeBlit, createStage } from '@spectra/core';
 import { VERTEX, COMPOSITE } from './shaders.js';
 import { FluidSim, CONFIG } from './fluid.js';
 import { Governor, TIERS } from './perf.js';
+import { PAINTS } from './paints.js';
 
-export { CONFIG };
+export { CONFIG, PAINTS };
 
 /**
  * Mount the nebula into `container` (which should be positioned and sized).
  * Without WebGL2 + float targets the container gets the `nebula-fallback`
  * class instead, for a static CSS gradient.
  * @param {HTMLElement} container
- * @param {{ tier?: number, debug?: boolean, cursor?: boolean, currents?: number, speed?: number, look?: 'space' | 'paint', ground?: string }} [opts]
+ * @param {{ tier?: number, debug?: boolean, cursor?: boolean, currents?: number, speed?: number, look?: 'space' | 'paint', paint?: string, ground?: string }} [opts]
  */
 export function mount(container, opts = {}) {
   const cursor = opts.cursor ?? true;
@@ -62,7 +63,14 @@ export function mount(container, opts = {}) {
   fluid.config.currents = opts.currents ?? (cursor ? 0 : 1);
   if (opts.speed != null) fluid.config.speed = opts.speed;
   if (opts.look) fluid.config.look = opts.look;
-  if (opts.ground) fluid.config.ground = opts.ground;
+  if (opts.paint) fluid.config.paint = opts.paint;
+  fluid.config.ground = opts.ground ?? (PAINTS[fluid.config.paint] ?? PAINTS.nebula).ground;
+  // A new palette brings its own ground; a ground set after it stays.
+  let paintName = fluid.config.paint;
+  const hex = (/** @type {string} */ h) => {
+    const n = parseInt(h.slice(1), 16);
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  };
   const composite = new Program(gl, VERTEX, COMPOSITE);
   const blit = makeBlit(gl);
 
@@ -120,13 +128,18 @@ export function mount(container, opts = {}) {
     gl.uniform1f(composite.uniforms.uTime, time);
     gl.uniform1f(composite.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
     gl.uniform1f(composite.uniforms.uPaint, fluid.config.look === 'paint' ? 1 : 0);
-    const g = parseInt(fluid.config.ground.slice(1), 16);
-    gl.uniform3f(composite.uniforms.uGround, (g >> 16 & 255) / 255, (g >> 8 & 255) / 255, (g & 255) / 255);
+    const paint = PAINTS[fluid.config.paint] ?? PAINTS.nebula;
+    if (fluid.config.paint !== paintName) {
+      paintName = fluid.config.paint;
+      fluid.config.ground = paint.ground;
+    }
+    gl.uniform3fv(composite.uniforms.uGround, hex(fluid.config.ground));
+    gl.uniform3fv(composite.uniforms['uInk[0]'], paint.inks.flatMap(hex));
     blit(null);
   });
 
   return {
-    /** Live tuning: velocityDissipation, offsetDecay, splatForce, speed, currents, look, ground. */
+    /** Live tuning: velocityDissipation, offsetDecay, splatForce, speed, currents, look, paint, ground. */
     config: fluid.config,
     destroy: () => stage.destroy(),
   };

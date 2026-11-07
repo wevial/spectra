@@ -254,6 +254,7 @@ uniform float uTime;
 uniform float uAspect;
 uniform float uPaint;   // 1: paint look
 uniform vec3 uGround;   // paint look's ground color
+uniform vec3 uInk[4];   // paint look's inks: fringe, middle, core, hot core
 ${NOISE_GLSL}
 
 // Deep-space vertical gradient: near-black violet up top, a touch warmer low.
@@ -302,11 +303,18 @@ float starLayer(vec2 uv, float cells, float density) {
   return star * star * bright;
 }
 
-// Paint: the gas's hue at full strength, its strength as coverage. Dust
-// lanes read as darker streaks in the paint.
+// Paint: the gas's hue picks an ink, its strength is coverage. The hue is
+// read back from the gas color: red rises from blue fringes (0.25) through
+// purple (0.57) to pink cores (1), and the hot cores add green. Dust lanes
+// read as darker streaks in the paint.
 vec3 paint(vec4 dye) {
   float m = max(max(dye.r, dye.g), dye.b);
-  vec3 pigment = dye.rgb / max(m, 1e-4) * 0.9;
+  vec3 n = dye.rgb / max(m, 1e-4);
+  float toMid = smoothstep(0.25, 0.57, n.r);
+  float toCore = smoothstep(0.6, 1.0, n.r);
+  float hot = smoothstep(0.45, 0.75, n.g) * toCore;
+  vec3 pigment = mix(mix(uInk[0], uInk[1], toMid), uInk[2], toCore);
+  pigment = mix(pigment, uInk[3], hot);
   float cover = 1.0 - exp(-m * 2.6);
   vec3 col = mix(uGround, pigment, cover);
   return col * (1.0 - dye.a * 0.35);

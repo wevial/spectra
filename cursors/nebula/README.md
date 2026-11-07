@@ -28,7 +28,8 @@ governor decisions. In the gallery these are `?tier=` and `?perf`.
 wanderers stir the gas instead, `currents` strong (see
 [paint drift](../../backgrounds/paint-drift)). `speed` scales the drift.
 `look: 'paint'` drops the space: no stars or night sky, and the gas is laid
-over a flat `ground` color as opaque pigment instead of glowing.
+in a palette's inks (`paint`, see `PAINTS`) over its flat `ground` color, as opaque
+pigment instead of glowing.
 
 ## How it works
 

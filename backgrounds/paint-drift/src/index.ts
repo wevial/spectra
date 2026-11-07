@@ -3,17 +3,22 @@
 // through its fluid sim, so the gas swirls, thins and piles up at the edges,
 // then heals back, on its own. Ignores the pointer.
 
-import { mount as mountNebula } from '@spectra/nebula';
+import { mount as mountNebula, PAINTS } from '@spectra/nebula';
 import type { NebulaConfig } from '@spectra/nebula';
 
 export type { NebulaConfig };
 
+/** Palettes: four inks (the gas's fringe, middle, core, hot core) over a ground. */
+export { PAINTS };
+
 export interface PaintDriftOptions {
+  /** Palette, a key of PAINTS. Default `nebula`. */
+  paint?: keyof typeof PAINTS;
   /** Strength of the ambient currents; 0 leaves only the drift. */
   currents?: number;
   /** Drift speed of the cloud and the currents. */
   speed?: number;
-  /** Ground color under the paint, hex. Default a cream paper. */
+  /** Ground color under the paint, hex. Default the palette's. */
   ground?: string;
   /** Lock a quality tier, 0–3 (4 = static fallback). */
   tier?: number;
@@ -23,10 +28,10 @@ export interface PaintDriftOptions {
 
 /**
  * Mount the background into `container` (which should be positioned and
- * sized). `config` is live; `currents` and `speed` are the ones to tune.
- * Without WebGL2 + float targets the container gets the `nebula-fallback`
- * class instead.
+ * sized). `config` is live; `paint`, `currents` and `speed` are the ones to
+ * tune. Without WebGL2 + float targets the container gets the
+ * `nebula-fallback` class instead.
  */
 export function mount(container: HTMLElement, opts: PaintDriftOptions = {}) {
-  return mountNebula(container, { ground: '#efe8dc', ...opts, cursor: false, look: 'paint' });
+  return mountNebula(container, { ...opts, cursor: false, look: 'paint' });
 }
