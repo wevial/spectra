@@ -1,4 +1,4 @@
-import { mount, PAINTS } from '@spectra/paint-drift';
+import { mount, PAINTS } from '@spectra/plume';
 import { renderNav, panel } from '../shell';
 
 renderNav();

@@ -26,7 +26,7 @@ Options: `tier` locks a quality tier (0–3, 4 = static fallback); `debug` logs
 governor decisions. In the gallery these are `?tier=` and `?perf`.
 `cursor: false` makes it a background: the pointer is ignored and invisible
 wanderers stir the gas instead, `currents` strong (see
-[paint drift](../../backgrounds/paint-drift)). `speed` scales the drift.
+[plume](../../backgrounds/plume)). `speed` scales the drift.
 `look: 'paint'` drops the space: no stars or night sky, and the gas is laid
 in a palette's inks (`paint`, see `PAINTS`) over its flat `ground` color, as opaque
 pigment instead of glowing.

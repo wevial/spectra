@@ -1,4 +1,4 @@
-# Paint drift background
+# Plume background
 
 The [nebula](../../cursors/nebula)'s gas, dragged like wet paint. Invisible
 brushes wander the box and pull lanes through it: the gas thins where they
@@ -6,11 +6,11 @@ pass, piles up at the edges and swirls in their wake, then heals back to its
 untouched shape. No cursor.
 
 ```js
-import { mount } from '@spectra/paint-drift';
+import { mount } from '@spectra/plume';
 
-const drift = mount(document.querySelector('#hero'), { paint: 'lagoon', currents: 1.5 });
-drift.config.paint = 'sunset'; // live tuning, picked up next frame
-drift.destroy();
+const plume = mount(document.querySelector('#hero'), { paint: 'lagoon', currents: 1.5 });
+plume.config.paint = 'sunset'; // live tuning, picked up next frame
+plume.destroy();
 ```
 
 Palettes (see `PAINTS`), each four inks over its own ground:

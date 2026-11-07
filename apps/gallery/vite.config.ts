@@ -26,7 +26,7 @@ export default defineConfig({
         filings: page('filings/index.html'),
         film: page('film/index.html'),
         haze: page('haze/index.html'),
-        'paint-drift': page('paint-drift/index.html'),
+        plume: page('plume/index.html'),
         wisp: page('wisp/index.html'),
       },
     },

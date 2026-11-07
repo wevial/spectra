@@ -24,7 +24,7 @@
         "@spectra/lens": "workspace:*",
         "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
-        "@spectra/paint-drift": "workspace:*",
+        "@spectra/plume": "workspace:*",
         "@spectra/riso": "workspace:*",
         "@spectra/wisp": "workspace:*",
         "lil-gui": "^0.20.0",
@@ -40,8 +40,8 @@
         "@spectra/core": "workspace:*",
       },
     },
-    "backgrounds/paint-drift": {
-      "name": "@spectra/paint-drift",
+    "backgrounds/plume": {
+      "name": "@spectra/plume",
       "version": "0.1.0",
       "dependencies": {
         "@spectra/nebula": "workspace:*",
@@ -345,7 +345,7 @@
 
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
 
-    "@spectra/paint-drift": ["@spectra/paint-drift@workspace:backgrounds/paint-drift"],
+    "@spectra/plume": ["@spectra/plume@workspace:backgrounds/plume"],
 
     "@spectra/riso": ["@spectra/riso@workspace:cursors/riso"],
 

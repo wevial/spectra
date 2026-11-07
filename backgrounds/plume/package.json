@@ -1,5 +1,5 @@
 {
-  "name": "@spectra/paint-drift",
+  "name": "@spectra/plume",
   "version": "0.1.0",
   "description": "The nebula's gas dragged like wet paint: invisible brushes pull lanes through it on their own, and it heals back.",
   "type": "module",

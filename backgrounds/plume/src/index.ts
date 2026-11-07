@@ -1,4 +1,4 @@
-// Paint drift background — the nebula's gas dragged like wet paint. It's the
+// Plume background — the nebula's gas dragged like wet paint. It's the
 // nebula cursor without the cursor: a few invisible wanderers pull lanes
 // through its fluid sim, so the gas swirls, thins and piles up at the edges,
 // then heals back, on its own. Ignores the pointer.
@@ -11,7 +11,7 @@ export type { NebulaConfig };
 /** Palettes: four inks (the gas's fringe, middle, core, hot core) over a ground. */
 export { PAINTS };
 
-export interface PaintDriftOptions {
+export interface PlumeOptions {
   /** Palette, a key of PAINTS. Default `nebula`. */
   paint?: keyof typeof PAINTS;
   /** Strength of the ambient currents; 0 leaves only the drift. */
@@ -32,6 +32,6 @@ export interface PaintDriftOptions {
  * tune. Without WebGL2 + float targets the container gets the
  * `nebula-fallback` class instead.
  */
-export function mount(container: HTMLElement, opts: PaintDriftOptions = {}) {
+export function mount(container: HTMLElement, opts: PlumeOptions = {}) {
   return mountNebula(container, { ...opts, cursor: false, look: 'paint' });
 }
