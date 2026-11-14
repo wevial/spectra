@@ -14,7 +14,7 @@ describe('gaussianTaps', () => {
 });
 
 describe('ribbonParams', () => {
-  const opts = { placement: 'center' as const, count: 4, amplitude: 0.3, thickness: 0.08, spread: 0.2, seed: 0 };
+  const opts = { placement: 'center' as const, depth: 0.6, count: 4, amplitude: 0.3, thickness: 0.08, spread: 0.2, seed: 0 };
 
   test('clamps the count and leaves unused slots empty', () => {
     expect(ribbonParams({ ...opts, count: 9 }, 0).count).toBe(MAX_RIBBONS);
@@ -47,7 +47,7 @@ test('ribbonColors cycles a palette into every slot', () => {
 });
 
 describe('ribbonFrames', () => {
-  const opts = { placement: 'center' as const, count: 5, amplitude: 0.3, thickness: 0.08, spread: 0.4, seed: 0 };
+  const opts = { placement: 'center' as const, depth: 0.6, count: 5, amplitude: 0.3, thickness: 0.08, spread: 0.4, seed: 0 };
   const box = [2, 1.25] as const;
 
   test('centered and full-bleed share one identity frame', () => {

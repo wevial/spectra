@@ -44,6 +44,8 @@ export interface RibbonOptions {
   amplitude: number;
   thickness: number;
   spread: number;
+  /** 0..1: how much the back ribbons shrink (the shader also softens and dims them). */
+  depth: number;
   seed: number;
 }
 
@@ -52,7 +54,9 @@ export interface RibbonOptions {
  * - wave: two sines along the ribbon (frequency, phase, frequency, phase),
  *   x running -1..1 from one pinch point to the other;
  * - shape: amplitude, vertical offset, half-thickness at the middle, and the
- *   phase of a slow swell that runs along the ribbon.
+ *   phase of a slow swell that runs along the ribbon;
+ * - extra: twist frequency and phase, depth (0 front, 1 back), and where a
+ *   traveling glint is along x (past ±1.4 when none is running).
  *
  * Every ribbon drifts at its own incommensurate speeds, so the braid never
  * repeats; amplitude and thickness breathe on periods of 10–30s.
@@ -61,6 +65,7 @@ export function ribbonParams(o: RibbonOptions, t: number) {
   const count = Math.max(1, Math.min(MAX_RIBBONS, Math.round(o.count)));
   const wave = new Float32Array(MAX_RIBBONS * 4);
   const shape = new Float32Array(MAX_RIBBONS * 4);
+  const extra = new Float32Array(MAX_RIBBONS * 4);
   // A slow common breath: everything swells and settles together, slightly.
   const breath = 1 + 0.08 * Math.sin(t * 0.55);
   for (let i = 0; i < count; i++) {
@@ -72,17 +77,27 @@ export function ribbonParams(o: RibbonOptions, t: number) {
     const s2 = (0.13 + 0.12 * r(5)) * (r(6) < 0.5 ? -1 : 1);
     wave.set([f1, r(7) * Math.PI * 2 + t * s1, f2, r(8) * Math.PI * 2 + t * s2], i * 4);
 
-    const amp = o.amplitude * (0.62 + 0.38 * Math.sin(t * (0.21 + 0.1 * r(9)) + r(10) * 6.283)) * breath;
+    // Depths spread evenly front to back, in a seeded order.
+    const z = (i * 0.618 + hash(o.seed * 3.1 + 0.5)) % 1;
+    const far = 1 - 0.25 * z * o.depth;
+    const amp = far * o.amplitude * (0.62 + 0.38 * Math.sin(t * (0.21 + 0.1 * r(9)) + r(10) * 6.283)) * breath;
     // Spread: ribbons fan out from a common center line, offsets wandering a little.
     const lane = count > 1 ? i / (count - 1) - 0.5 : 0;
     // Filling, each ribbon has its own frame (see ribbonFrames), so they
     // don't fan out from a shared line.
     const fan = o.placement === 'fill' ? 0 : lane * 0.5;
     const offset = o.spread * (fan + 0.08 * Math.sin(t * (0.17 + 0.08 * r(11)) + r(12) * 6.283));
-    const thick = o.thickness * (0.7 + 0.5 * r(13)) * (0.9 + 0.1 * Math.sin(t * (0.3 + 0.1 * r(14)) + i)) * breath;
+    const thick = far * o.thickness * (0.7 + 0.5 * r(13)) * (0.9 + 0.1 * Math.sin(t * (0.3 + 0.1 * r(14)) + i)) * breath;
     shape.set([amp, offset, thick, r(15) * 6.283 + t * (0.25 + 0.15 * r(16))], i * 4);
+
+    // About a half to one full turn along the ribbon, rolling slowly.
+    const twistSpeed = (0.12 + 0.13 * r(17)) * (r(18) < 0.5 ? -1 : 1);
+    // A glint every 14–26s, taking ~3.5s to cross.
+    const period = 14 + 12 * r(19);
+    const since = ((t / period + r(20)) % 1) * period;
+    extra.set([1.8 + 1.6 * r(21), r(22) * 6.283 + t * twistSpeed, z, -1.4 + (since / 3.5) * 2.8], i * 4);
   }
-  return { count, wave, shape };
+  return { count, wave, shape, extra };
 }
 
 /**

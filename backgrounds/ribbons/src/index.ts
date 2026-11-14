@@ -34,6 +34,14 @@ export const DEFAULTS = {
    * and pinch points past the sides, spread over the whole box.
    */
   placement: 'full' as Placement,
+  /** How much the ribbons twist along their length, narrowing to bright lines where they turn edge-on. */
+  twist: 0.8,
+  /** Front-to-back depth: back ribbons are smaller, softer and dimmer. */
+  depth: 0.6,
+  /** Thin-film color shift with the twist and across each ribbon. */
+  sheen: 0.35,
+  /** Brightness of the glints that now and then run along a ribbon. */
+  glints: 0.6,
   /** Film grain. */
   grain: 0.015,
   /** Seconds for the grain to morph into a new pattern; 0 freezes it. */
@@ -47,12 +55,18 @@ export type RibbonsConfig = typeof DEFAULTS;
 export interface RibbonsHandle {
   /** Live config: mutate fields and the next frame picks them up. */
   config: RibbonsConfig;
+  /** A surge: the ribbons swing wider, speed up and brighten, then settle over ~2s. Stacks. */
+  pulse(strength?: number): void;
   destroy(): void;
 }
 
 const REVEAL_MS = 1200;
 /** Chromatic fringe, as a fraction of the half-width. */
 const FRINGE_BASE = 0.07;
+/** Sheen strength per palette: silver gets its color from the film. */
+const SHEEN: Partial<Record<PaletteName, number>> = { silver: 1.3 };
+/** Pulse energy decay, per second. */
+const PULSE_DECAY = 1.6;
 /** How hard overlaps burn to white. */
 const WHITE = 0.6;
 /** Halo blur, sigma in quarter-resolution texels (~10 CSS px). */
@@ -76,7 +90,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
   });
   if (!stage) {
     container.classList.add('ribbons-fallback');
-    return { config, destroy() {} };
+    return { config, pulse() {}, destroy() {} };
   }
   const { gl, canvas, reducedMotion } = stage;
   const blit = makeBlit(gl);
@@ -108,6 +122,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
   let time = 0;
   let reveal = reducedMotion.matches ? 1 : 0;
   let grainClock = 0;
+  let energy = 0;
 
   function setRibbons(p: Program, box: [number, number], center: [number, number]) {
     const u = p.uniforms;
@@ -117,7 +132,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     const fill = config.placement === 'fill';
     const opts = {
       ...config,
-      amplitude: config.amplitude * k * (fill ? 1.2 : 1),
+      amplitude: config.amplitude * k * (fill ? 1.2 : 1) * (1 + 0.3 * energy),
       spread: config.spread * k,
       thickness: config.thickness * (fill ? 0.65 : 1),
     };
@@ -131,6 +146,11 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     gl.uniform3fv(u['uColor[0]'], ribbonColors(PALETTES[config.palette] ?? PALETTES.flare));
     gl.uniform1f(u.uFringe, FRINGE_BASE * (FRINGE[config.palette] ?? 1));
     gl.uniform1f(u.uWhite, WHITE);
+    gl.uniform4fv(u['uExtra[0]'], r.extra);
+    gl.uniform1f(u.uTwist, config.twist);
+    gl.uniform1f(u.uDepth, config.depth);
+    gl.uniform1f(u.uSheen, config.sheen * (SHEEN[config.palette] ?? 1));
+    gl.uniform1f(u.uGlints, config.glints);
   }
 
   function blurPass(src: FBO, dst: FBO, taps: ReturnType<typeof gaussianTaps>, dx: number, dy: number) {
@@ -152,7 +172,8 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
       drawn = key;
     } else {
       drawn = '';
-      time += dt * config.speed;
+      energy *= Math.exp((-PULSE_DECAY * rawDtMs) / 1000);
+      time += dt * config.speed * (1 + 2 * energy);
       reveal = Math.min(1, reveal + rawDtMs / REVEAL_MS);
       if (config.grainPeriod > 0) grainClock += rawDtMs / 1000 / config.grainPeriod;
     }
@@ -185,10 +206,10 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     const u = composite.uniforms;
     gl.uniform1i(u.uHalo, halo!.attach(0));
     gl.uniform1i(u.uWide, wide!.attach(1));
-    gl.uniform1f(u.uGlow, config.glow);
+    gl.uniform1f(u.uGlow, config.glow * (1 + 0.8 * energy));
     // Breathes: a slow swell in brightness on top of the ribbons' own.
     const breath = 0.92 + 0.08 * Math.sin(time * 0.55 + 0.6);
-    gl.uniform1f(u.uBright, config.intensity * breath * (1 - Math.pow(1 - reveal, 3)));
+    gl.uniform1f(u.uBright, config.intensity * breath * (1 + 0.5 * energy) * (1 - Math.pow(1 - reveal, 3)));
     setGrain(gl, u, config.grain, grainClock);
     blit(null);
   }
@@ -199,6 +220,10 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
 
   return {
     config,
+    pulse(strength = 1) {
+      // Reduced motion keeps its one still frame.
+      if (!reducedMotion.matches) energy = Math.min(energy + strength, 2);
+    },
     destroy() {
       stage.destroy(); // losing the context frees every GL object with it
     },

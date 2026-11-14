@@ -10,6 +10,7 @@ import { mount } from '@spectra/ribbons';
 
 const ribbons = mount(document.querySelector('header'), { palette: 'silver', placement: 'fill' });
 ribbons.config.count = 5; // live tuning, picked up next frame
+ribbons.pulse();          // a surge that settles over ~2s, e.g. on send or while listening
 ribbons.destroy();
 ```
 
@@ -18,7 +19,10 @@ Palettes: `flare` (default), warm red and orange against cool blue and cyan;
 edges; `lagoon`; `orchid` (see `PALETTES`). `placement: 'full'` (default)
 runs the band edge to edge and swings it tall; `'center'` keeps it in the
 middle of the box, clear of the edges; `'fill'` gives each ribbon its own
-lane, tilt and pinch points, spread over the whole box.
+lane, tilt and pinch points, spread over the whole box. `twist`, `depth`,
+`sheen` and `glints` add form: ribbons that roll edge-on into bright lines,
+back ribbons softer and dimmer, a thin-film color shift, and glints of light
+that now and then run from end to end.
 See `DEFAULTS` in `src/index.ts` for every option.
 
 ## How it works
@@ -36,7 +40,15 @@ of the pixel's position, evaluated per pixel.
    in the middle and tapers to nothing at its ends. Frequencies, phases and
    drift speeds differ per ribbon and are incommensurate, so the braid
    keeps re-forming; amplitude and thickness breathe on 10–30s periods.
-2. **Cross-section.** The distance to a ribbon is its vertical offset
+2. **Form.** Each ribbon twists along its length: its width is the face-on
+   width times |cos θ|, and its light scales up by about as much (capped at
+   3×), so where it turns edge-on it squeezes into a bright line, as a strip
+   of fabric catching the light would. Ribbons sit at depths spread evenly
+   front to back; the back ones are a little smaller, their edges blurred
+   in proportion to their width, and dimmer. A thin-film sheen rotates the
+   hue with θ and across the width, and a Gaussian glint slides along x
+   every 14–26s.
+3. **Cross-section.** The distance to a ribbon is its vertical offset
    divided by √(1 + slope²), the perpendicular distance to first order, so
    steep stretches keep their width. The profile is soft-edged and brighter
    toward the rim than the middle, like light grazing the edge of a
@@ -44,18 +56,18 @@ of the pixel's position, evaluated per pixel.
    one pixel, so nothing aliases at any size or DPR; a ribbon thinner than a
    pixel is drawn a pixel wide and dimmed in proportion, so the pinched ends
    fade out instead of crawling.
-3. **Light.** Ribbons add in linear light. Where they overlap, an extra
+4. **Light.** Ribbons add in linear light. Where they overlap, an extra
    white term grows with the overlap; a shoulder rolls highlights off and
    bleeds what spills past one channel into the others, so hot crossings go
    white, not neon, while lone ribbons stay saturated. Red rides a touch
    above each centerline and blue a touch below: a faint prism fringe on the
    edges that whitens out in the middle (stronger for `silver`).
-4. **Bloom.** The same function, drawn at quarter CSS resolution, seeds two
+5. **Bloom.** The same function, drawn at quarter CSS resolution, seeds two
    separable Gaussian blurs: a tight halo there (σ ≈ 10 CSS px) and a wide
    glow at eighth resolution (σ ≈ 45 CSS px). Both are blurred well past
    their texel size, so bilinear upsampling never shows blocks. Sized from
    CSS pixels, the glow looks the same at any DPR.
-5. **Finish.** Pure black under film grain (`GRAIN` from `@spectra/core`).
+6. **Finish.** Pure black under film grain (`GRAIN` from `@spectra/core`).
 
 It mounts black and fades the ribbons in over 1.2s. Requires WebGL2 +
 `EXT_color_buffer_float`; otherwise the container gets the
@@ -72,6 +84,6 @@ It mounts black and fades the ribbons in over 1.2s. Requires WebGL2 +
 }
 ```
 
-With `prefers-reduced-motion` the drift, breathing and grain freeze into one
-static frame (redrawn only when the config or size changes) and the fade-in
-is skipped.
+With `prefers-reduced-motion` the drift, breathing, glints and grain freeze
+into one static frame (redrawn only when the config or size changes), the
+fade-in is skipped and `pulse()` does nothing.

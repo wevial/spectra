@@ -9,8 +9,15 @@ import { MAX_RIBBONS, MAX_TAPS } from './params';
 // runs -1..1 between its two pinch points and y is in the same units.
 // Centered and full-bleed, every frame is the same; `fill` gives each
 // ribbon its own height, tilt and length. A lens-shaped envelope
-// e(x) = 1 - x² carries both the centerline and the thickness, so every ribbon is thick in the middle and
-// tapers to nothing at the shared pinch points.
+// e(x) = 1 - x² carries both the centerline and the thickness, so every
+// ribbon is thick in the middle and tapers to nothing at its pinch points.
+//
+// Each ribbon also twists along its length like a strip of fabric: its
+// width is the face-on width times |cos θ|, and where it turns edge-on the
+// same light squeezes into a narrow, bright line. Ribbons sit at different
+// depths: the back ones are softer and dimmer. A thin-film sheen shifts the
+// color with the twist and across the width, and now and then a glint of
+// light runs along a ribbon from one end to the other.
 //
 // Distance to a ribbon is the vertical offset from its centerline divided by
 // sqrt(1 + slope²): the perpendicular distance to first order, so steep
@@ -21,19 +28,24 @@ uniform int uCount;
 uniform vec4 uWave[${MAX_RIBBONS}];   // freq 1, phase 1, freq 2, phase 2
 uniform vec4 uShape[${MAX_RIBBONS}];  // amplitude, offset, half-thickness, swell phase
 uniform vec4 uFrame[${MAX_RIBBONS}];  // center x, y, angle, scale: where each ribbon sits
+uniform vec4 uExtra[${MAX_RIBBONS}];  // twist frequency, twist phase, depth 0..1, glint position
 uniform vec3 uColor[${MAX_RIBBONS}];  // linear
 uniform float uFringe;                // chromatic split, fraction of the half-width
 uniform float uWhite;                 // how hard overlaps burn to white
+uniform float uTwist;                 // 0 flat, 1 fully twisting
+uniform float uDepth;                 // how much depth softens and dims the back ribbons
+uniform float uSheen;                 // thin-film color shift
+uniform float uGlints;                // brightness of the traveling glints
 
 // Cross-section at distance d from the centerline, half-width h, pixel size
-// aa. Soft-edged and brighter toward the rim than the middle, like light
+// aa, extra edge blur for depth. Soft-edged and brighter toward the rim than the middle, like light
 // grazing the edge of a translucent tube. A ribbon thinner than a pixel is
 // drawn one pixel wide and dimmed in proportion, so the tapered ends fade
 // out instead of breaking into crawling dashes.
-float section(float d, float h, float aa) {
+float section(float d, float h, float aa, float blur) {
   float he = max(h, aa);
-  float soft = max(he * 0.5, aa);
-  float body = 1.0 - smoothstep(he - soft, he + aa, d);
+  float soft = max(he * 0.5, aa) + blur;
+  float body = 1.0 - smoothstep(he - soft, he + aa + blur, d);
   float s = clamp(d / he, 0.0, 1.0);
   return body * (0.2 + 1.0 * s * s * s) * (h / he);
 }
@@ -63,15 +75,32 @@ vec3 ribbons(vec2 p) {
     float aa = fwidth(d);
     // Thick in the middle, a slow swell running along it.
     float h = s.z * pow(taper, 1.25) * (1.0 + 0.3 * sin(2.3 * x + s.w));
+    vec4 g = uExtra[i];
+    // Twist: narrow where the ribbon turns edge-on, brighter by about as
+    // much (the same light through a thinner band), capped at 3x.
+    float th = g.x * x + g.y;
+    float ct = abs(cos(th));
+    h *= mix(1.0, max(ct, 0.03), uTwist);
+    float gain = mix(1.0, min(1.25 / (ct + 0.25), 3.0), uTwist);
+    // Depth: back ribbons get softer edges and less light.
+    float z = g.z * uDepth;
+    float blur = z * h * 0.9;
+    gain *= 1.0 - 0.5 * z;
+    // A glint running along the ribbon.
+    float gx = (x - g.w) / 0.1;
+    gain *= 1.0 + uGlints * 2.5 * exp(-gx * gx);
     // Red rides a touch above the centerline and blue a touch below, like
     // light dispersed through a prism: a warm upper edge, a cool lower one,
     // and white again where the channels coincide in the middle.
     float split = uFringe * h;
     vec3 sec = vec3(
-      section(abs(d - split), h, aa),
-      section(abs(d), h, aa),
-      section(abs(d + split), h, aa));
-    col += uColor[i] * sec;
+      section(abs(d - split), h, aa, blur),
+      section(abs(d), h, aa, blur),
+      section(abs(d + split), h, aa, blur));
+    // Thin-film sheen: the hue rotates with the twist and across the width.
+    float film = 2.0 * th + 1.5 * d / max(h, aa);
+    vec3 tint = 1.0 + uSheen * 0.6 * cos(film + vec3(0.0, 2.094, 4.189));
+    col += uColor[i] * tint * sec * gain;
     sum += sec.g;
     top = max(top, sec.g);
   }
