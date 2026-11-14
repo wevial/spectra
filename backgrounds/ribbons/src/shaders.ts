@@ -12,9 +12,9 @@ import { MAX_RIBBONS, MAX_TAPS } from './params';
 // e(x) = 1 - x² carries both the centerline and the thickness, so every
 // ribbon is thick in the middle and tapers to nothing at its pinch points.
 //
-// Each ribbon also twists along its length like a strip of fabric: its
-// width is the face-on width times |cos θ|, and where it turns edge-on the
-// same light squeezes into a narrow, bright line. Ribbons sit at different
+// Each ribbon also twists along its length like a strip of fabric: where
+// it turns edge-on it narrows to a third of its width and brightens, as
+// the same light squeezes into a thinner band. Ribbons sit at different
 // depths: the back ones are softer and dimmer. A thin-film sheen shifts the
 // color with the twist and across the width, and now and then a glint of
 // light runs along a ribbon from one end to the other.
@@ -76,12 +76,14 @@ vec3 ribbons(vec2 p) {
     // Thick in the middle, a slow swell running along it.
     float h = s.z * pow(taper, 1.25) * (1.0 + 0.3 * sin(2.3 * x + s.w));
     vec4 g = uExtra[i];
-    // Twist: narrow where the ribbon turns edge-on, brighter by about as
-    // much (the same light through a thinner band), capped at 3x.
+    // Twist: narrower and brighter where the ribbon turns edge-on.
     float th = g.x * x + g.y;
     float ct = abs(cos(th));
-    h *= mix(1.0, max(ct, 0.03), uTwist);
-    float gain = mix(1.0, min(1.25 / (ct + 0.25), 3.0), uTwist);
+    // Never closer than a third of the face-on width: a full close reads as
+    // a pinch mid-ribbon rather than a roll.
+    float face = 0.35 + 0.65 * ct;
+    h *= mix(1.0, face, uTwist);
+    float gain = mix(1.0, 1.0 / face, uTwist * 0.6);
     // Depth: back ribbons get softer edges and less light.
     float z = g.z * uDepth;
     float blur = z * h * 0.9;

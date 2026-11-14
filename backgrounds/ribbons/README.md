@@ -40,10 +40,10 @@ of the pixel's position, evaluated per pixel.
    in the middle and tapers to nothing at its ends. Frequencies, phases and
    drift speeds differ per ribbon and are incommensurate, so the braid
    keeps re-forming; amplitude and thickness breathe on 10–30s periods.
-2. **Form.** Each ribbon twists along its length: its width is the face-on
-   width times |cos θ|, and its light scales up by about as much (capped at
-   3×), so where it turns edge-on it squeezes into a bright line, as a strip
-   of fabric catching the light would. Ribbons sit at depths spread evenly
+2. **Form.** Each ribbon twists along its length: where it turns edge-on
+   its width falls to a third and its light rises, as a strip of fabric
+   catching the light would. It never closes fully, which would read as a
+   pinch mid-ribbon. Ribbons sit at depths spread evenly
    front to back; the back ones are a little smaller, their edges blurred
    in proportion to their width, and dimmer. A thin-film sheen rotates the
    hue with θ and across the width, and a Gaussian glint slides along x
