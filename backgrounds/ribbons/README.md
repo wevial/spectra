@@ -16,7 +16,9 @@ ribbons.destroy();
 Palettes: `flare` (default), warm red and orange against cool blue and cyan;
 `spectrum`, hues around the wheel; `silver`, near-white with faint spectral
 edges; `lagoon`; `orchid` (see `PALETTES`). `placement: 'center'` keeps the
-ribbons in a band in the middle of the box; `'full'` runs them edge to edge.
+ribbons in a band in the middle of the box; `'full'` runs the band edge to
+edge and swings it taller; `'fill'` gives each ribbon its own lane, tilt and
+pinch points, spread over the whole box.
 See `DEFAULTS` in `src/index.ts` for every option.
 
 ## How it works
@@ -24,11 +26,14 @@ See `DEFAULTS` in `src/index.ts` for every option.
 Everything is analytic: no geometry and no ribbon textures, just a function
 of the pixel's position, evaluated per pixel.
 
-1. **Ribbons.** x runs -1..1 between two pinch points. A lens envelope
+1. **Ribbons.** Each ribbon has a frame (center, angle, length) in which x
+   runs -1..1 between its two pinch points. Centered and full-bleed, every
+   ribbon shares one frame; `fill` spreads them over the height, leans the
+   outer ones toward the middle so they cross, and lets the frames wander. A lens envelope
    e(x) = 1 − x² carries both the centerline (two sines, `amplitude` tall,
    fanned apart by `spread`) and the thickness (e^1.25, plus a slow swell
    running along the ribbon), so each ribbon is thickest in the middle and
-   tapers to nothing at the shared ends. Frequencies, phases and drift
+   tapers to nothing at its ends. Frequencies, phases and drift
    speeds differ per ribbon and are incommensurate, so the braid keeps
    re-forming; amplitude and thickness breathe on 10–30s periods.
 2. **Cross-section.** The distance to a ribbon is its vertical offset

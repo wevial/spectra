@@ -36,7 +36,10 @@ export function hash(n: number) {
   return s - Math.floor(s);
 }
 
+export type Placement = 'center' | 'full' | 'fill';
+
 export interface RibbonOptions {
+  placement: Placement;
   count: number;
   amplitude: number;
   thickness: number;
@@ -72,11 +75,43 @@ export function ribbonParams(o: RibbonOptions, t: number) {
     const amp = o.amplitude * (0.62 + 0.38 * Math.sin(t * (0.21 + 0.1 * r(9)) + r(10) * 6.283)) * breath;
     // Spread: ribbons fan out from a common center line, offsets wandering a little.
     const lane = count > 1 ? i / (count - 1) - 0.5 : 0;
-    const offset = o.spread * (lane * 0.5 + 0.08 * Math.sin(t * (0.17 + 0.08 * r(11)) + r(12) * 6.283));
+    // Filling, each ribbon has its own frame (see ribbonFrames), so they
+    // don't fan out from a shared line.
+    const fan = o.placement === 'fill' ? 0 : lane * 0.5;
+    const offset = o.spread * (fan + 0.08 * Math.sin(t * (0.17 + 0.08 * r(11)) + r(12) * 6.283));
     const thick = o.thickness * (0.7 + 0.5 * r(13)) * (0.9 + 0.1 * Math.sin(t * (0.3 + 0.1 * r(14)) + i)) * breath;
     shape.set([amp, offset, thick, r(15) * 6.283 + t * (0.25 + 0.15 * r(16))], i * 4);
   }
   return { count, wave, shape };
+}
+
+/**
+ * Where each ribbon sits, packed vec4s: center x, y and angle in box units
+ * (x spans -box.x/2..box.x/2), and a scale on its length. Centered and
+ * full-bleed every ribbon shares one frame, so they pinch at the same two
+ * points. `fill` spreads the ribbons over the height, each with its own
+ * length and a tilt that leans the outer ones toward the middle, so they
+ * cross; the frames wander over minutes.
+ * Some pinch points land just inside the sides, some past them.
+ */
+export function ribbonFrames(o: RibbonOptions, box: readonly [number, number], t: number) {
+  const count = Math.max(1, Math.min(MAX_RIBBONS, Math.round(o.count)));
+  const frames = new Float32Array(MAX_RIBBONS * 4);
+  for (let i = 0; i < MAX_RIBBONS; i++) frames.set([0, 0, 0, 1], i * 4);
+  if (o.placement !== 'fill') return frames;
+  const span = box[1] * Math.min(0.8, 0.3 + o.spread);
+  for (let i = 0; i < count; i++) {
+    const r = (k: number) => hash(o.seed * 5.3 + i * 3.7 + k + 40);
+    // Lanes in palette order, which alternates warm and cool.
+    const lane = count > 1 ? i / (count - 1) - 0.5 : 0;
+    const y = lane * span + 0.06 * box[1] * Math.sin(t * (0.05 + 0.03 * r(1)) + r(2) * 6.283);
+    const x = 0.12 * box[0] * Math.sin(t * (0.03 + 0.02 * r(3)) + r(4) * 6.283);
+    const angle = -lane * 1.1 * (box[1] / box[0]) + (r(5) - 0.5) * 0.18 + 0.06 * Math.sin(t * (0.04 + 0.02 * r(6)) + r(7) * 6.283);
+    // Some reach past the sides, some pinch just inside them.
+    const scale = (box[0] / 2) * (0.9 + 0.45 * r(8)) / Math.cos(angle);
+    frames.set([x, y, angle, scale], i * 4);
+  }
+  return frames;
 }
 
 /** Linear colors for every ribbon slot from a palette, cycling it, packed vec3s. */

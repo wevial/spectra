@@ -5,9 +5,11 @@ import { MAX_RIBBONS, MAX_TAPS } from './params';
 // composite (full resolution). Everything is analytic: no geometry, no
 // texture, so edges are exact at any size.
 //
-// Coordinates: x runs -1..1 between the two pinch points, y is in the same
-// units (isotropic). A lens-shaped envelope e(x) = 1 - x² carries both the
-// centerline and the thickness, so every ribbon is thick in the middle and
+// Coordinates: each ribbon has a frame (center, angle, scale) in which x
+// runs -1..1 between its two pinch points and y is in the same units.
+// Centered and full-bleed, every frame is the same; `fill` gives each
+// ribbon its own height, tilt and length. A lens-shaped envelope
+// e(x) = 1 - x² carries both the centerline and the thickness, so every ribbon is thick in the middle and
 // tapers to nothing at the shared pinch points.
 //
 // Distance to a ribbon is the vertical offset from its centerline divided by
@@ -18,6 +20,7 @@ const RIBBONS = /* glsl */ `
 uniform int uCount;
 uniform vec4 uWave[${MAX_RIBBONS}];   // freq 1, phase 1, freq 2, phase 2
 uniform vec4 uShape[${MAX_RIBBONS}];  // amplitude, offset, half-thickness, swell phase
+uniform vec4 uFrame[${MAX_RIBBONS}];  // center x, y, angle, scale: where each ribbon sits
 uniform vec3 uColor[${MAX_RIBBONS}];  // linear
 uniform float uFringe;                // chromatic split, fraction of the half-width
 uniform float uWhite;                 // how hard overlaps burn to white
@@ -36,14 +39,19 @@ float section(float d, float h, float aa) {
 }
 
 vec3 ribbons(vec2 p) {
-  float x = p.x;
-  float e = 1.0 - x * x;
-  float de = -2.0 * x;
-  float taper = max(e, 0.0);
   vec3 col = vec3(0.0);
   float sum = 0.0, top = 0.0;
   for (int i = 0; i < ${MAX_RIBBONS}; i++) {
     if (i >= uCount) break;
+    // Into this ribbon's own frame: its pinch points at x = ±1.
+    vec4 f = uFrame[i];
+    vec2 r = p - f.xy;
+    float ca = cos(f.z), sa = sin(f.z);
+    vec2 q = vec2(ca * r.x + sa * r.y, ca * r.y - sa * r.x) / f.w;
+    float x = q.x;
+    float e = 1.0 - x * x;
+    float de = -2.0 * x;
+    float taper = max(e, 0.0);
     vec4 w = uWave[i];
     vec4 s = uShape[i];
     float a1 = w.x * x + w.y, a2 = w.z * x + w.w;
@@ -51,7 +59,7 @@ vec3 ribbons(vec2 p) {
     float dwav = s.x * (0.72 * w.x * cos(a1) + 0.28 * w.z * cos(a2));
     float c = e * wav;
     float dc = de * wav + e * dwav;
-    float d = (p.y - c) * inversesqrt(1.0 + dc * dc);
+    float d = (q.y - c) * inversesqrt(1.0 + dc * dc);
     float aa = fwidth(d);
     // Thick in the middle, a slow swell running along it.
     float h = s.z * pow(taper, 1.25) * (1.0 + 0.3 * sin(2.3 * x + s.w));

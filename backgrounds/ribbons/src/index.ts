@@ -6,11 +6,11 @@
 import { Program, VERTEX, makeBlit, createStage, createFBO, setGrain } from '@spectra/core';
 import type { FBO } from '@spectra/core';
 import { SEED, BLUR, COMPOSITE } from './shaders';
-import { PALETTES, FRINGE, ribbonParams, ribbonColors, gaussianTaps } from './params';
-import type { PaletteName } from './params';
+import { PALETTES, FRINGE, ribbonParams, ribbonFrames, ribbonColors, gaussianTaps } from './params';
+import type { PaletteName, Placement } from './params';
 
 export { PALETTES } from './params';
-export type { PaletteName } from './params';
+export type { PaletteName, Placement } from './params';
 
 export const DEFAULTS = {
   palette: 'flare' as PaletteName,
@@ -28,8 +28,12 @@ export const DEFAULTS = {
   glow: 1,
   /** Brightness of the ribbons themselves. */
   intensity: 1,
-  /** `center`: a band in the middle of the box. `full`: the ribbons run edge to edge. */
-  placement: 'center' as 'center' | 'full',
+  /**
+   * `center`: a band in the middle of the box. `full`: the band runs edge to
+   * edge and swings taller. `fill`: each ribbon gets its own height, tilt
+   * and pinch points past the sides, spread over the whole box.
+   */
+  placement: 'center' as Placement,
   /** Film grain. */
   grain: 0.015,
   /** Seconds for the grain to morph into a new pattern; 0 freezes it. */
@@ -107,12 +111,23 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
 
   function setRibbons(p: Program, box: [number, number], center: [number, number]) {
     const u = p.uniforms;
-    const r = ribbonParams(config, time);
+    // Full-bleed swings taller with the box, so the band reaches ~70% of its
+    // height. Filling, ribbons are scaled up by their frames: thin them back.
+    const k = config.placement === 'full' ? Math.max(1, box[1] * 1.6) : 1;
+    const fill = config.placement === 'fill';
+    const opts = {
+      ...config,
+      amplitude: config.amplitude * k * (fill ? 1.2 : 1),
+      spread: config.spread * k,
+      thickness: config.thickness * (fill ? 0.65 : 1),
+    };
+    const r = ribbonParams(opts, time);
     gl.uniform2f(u.uBox, box[0], box[1]);
     gl.uniform2f(u.uCenter, center[0], center[1]);
     gl.uniform1i(u.uCount, r.count);
     gl.uniform4fv(u['uWave[0]'], r.wave);
     gl.uniform4fv(u['uShape[0]'], r.shape);
+    gl.uniform4fv(u['uFrame[0]'], ribbonFrames(opts, box, time));
     gl.uniform3fv(u['uColor[0]'], ribbonColors(PALETTES[config.palette] ?? PALETTES.flare));
     gl.uniform1f(u.uFringe, FRINGE_BASE * (FRINGE[config.palette] ?? 1));
     gl.uniform1f(u.uWhite, WHITE);
@@ -146,8 +161,9 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     const h = canvas.clientHeight || 1;
     // Half the distance between the pinch points, in CSS px. Centered, the
     // band takes most of a landscape box but stays clear of the edges;
-    // full-bleed, the ends sit just past the sides.
-    const half = config.placement === 'full' ? w * 0.56 : Math.min(w * 0.4, h * 0.85);
+    // full-bleed, the ends sit just past the sides. Filling, a unit is half
+    // the width and each ribbon sizes its own frame.
+    const half = config.placement === 'full' ? w * 0.56 : config.placement === 'fill' ? w * 0.5 : Math.min(w * 0.4, h * 0.85);
     const box: [number, number] = [w / half, h / half];
     const center: [number, number] = [0.5, 0.5];
 
