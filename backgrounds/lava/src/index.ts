@@ -108,14 +108,21 @@ export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): L
     draw();
   }
 
+  let palette: string;
+  let colors: { liquid: number[]; deep: number[]; hot: number[] } | undefined;
+  const grain = (u: Record<string, WebGLUniformLocation | null>) => setGrain(gl, u, config.grain, grainClock);
+
   function draw() {
     const rainbow = config.palette === 'rainbow';
-    const colors = rainbow
-      ? [RAINBOW_LIQUID, RAINBOW_LIQUID, RAINBOW_LIQUID]
-      : PALETTES[config.palette as keyof typeof PALETTES] ?? PALETTES.magma;
-    const [liquid, deep, hot] = colors.map(hexToRgb);
-    fluid.render({ liquid, deep, hot }, config.glow, 1 - Math.pow(1 - reveal, 3), rainbow,
-      (u) => setGrain(gl, u, config.grain, grainClock));
+    if (!colors || palette !== config.palette) {
+      palette = config.palette;
+      const hex = rainbow
+        ? [RAINBOW_LIQUID, RAINBOW_LIQUID, RAINBOW_LIQUID]
+        : PALETTES[config.palette as keyof typeof PALETTES] ?? PALETTES.magma;
+      const [liquid, deep, hot] = hex.map(hexToRgb);
+      colors = { liquid, deep, hot };
+    }
+    fluid.render(colors, config.glow, 1 - Math.pow(1 - reveal, 3), rainbow, grain);
   }
 
   // Draw right away so the canvas never flashes black before the first frame.

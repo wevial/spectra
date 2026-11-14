@@ -9,7 +9,7 @@
 import { Program, VERTEX, createFBO, createDoubleFBO, makeBlit } from '@spectra/core';
 import type { FBO, DoubleFBO, Blit } from '@spectra/core';
 import {
-  INIT, ADVECT, VISCOSITY, FORCES, HEAT, SHARPEN_FLUX, SHARPEN, MASS, DIVERGENCE, PRESSURE, SUBTRACT, BLUR, RENDER,
+  INIT, ADVECT, VISCOSITY, FORCES, HEAT, SHARPEN, MASS, DIVERGENCE, PRESSURE, SUBTRACT, BLUR, RENDER,
   MAX_SPOTS, MAX_SEEDS,
 } from './shaders';
 
@@ -56,12 +56,13 @@ function rng(seed: number) {
 /** Where the hot spots sit at time t: each wanders its own lane, overlapping its neighbors'. */
 export function placeSpots(spots: Spot[], t: number) {
   const n = spots.length;
-  spots.forEach((s, k) => {
+  for (let k = 0; k < n; k++) {
+    const s = spots[k];
     const lane = (k + 0.5) / n;
     s.x = Math.min(0.95, Math.max(0.05,
       lane + (Math.sin(t * s.speed + s.phase) * 0.7 + Math.sin(t * s.speed * 2.3 + s.phase * 3) * 0.3) * 0.8 / n));
     s.strength = 0.55 + 0.45 * Math.sin(t * 0.13 + s.phase * 2);
-  });
+  }
 }
 
 export interface Measure {
@@ -99,6 +100,9 @@ export class LavaFluid {
   private massLod = 0;
   private target = 0.1;
   private body!: DoubleFBO;
+  private bodyDirty = true;
+  private pairs: { a: FBO; b: FBO; target: FBO }[] = [];
+  private spotData = new Float32Array(MAX_SPOTS * 2);
   private cols = 0;
 
   constructor(gl: WebGL2RenderingContext) {
@@ -110,7 +114,6 @@ export class LavaFluid {
       viscosity: new Program(gl, VERTEX, VISCOSITY),
       forces: new Program(gl, VERTEX, FORCES),
       heat: new Program(gl, VERTEX, HEAT),
-      sharpenFlux: new Program(gl, VERTEX, SHARPEN_FLUX),
       sharpen: new Program(gl, VERTEX, SHARPEN),
       mass: new Program(gl, VERTEX, MASS),
       divergence: new Program(gl, VERTEX, DIVERGENCE),
@@ -119,6 +122,22 @@ export class LavaFluid {
       blur: new Program(gl, VERTEX, BLUR),
       render: new Program(gl, VERTEX, RENDER),
     };
+    // Sampler units belong to the program and never change with ping-pong.
+    const samplers = {
+      advect: { uVelocity: 0, uState: 1 },
+      viscosity: { uVelocity: 0, uState: 1 },
+      forces: { uVelocity: 0, uState: 1 },
+      heat: { uState: 0 }, mass: { uState: 0 },
+      sharpen: { uState: 0, uFlux: 1, uMass: 2 },
+      divergence: { uVelocity: 0 }, pressure: { uPressure: 0, uDivergence: 1 },
+      subtract: { uPressure: 0, uVelocity: 1 }, blur: { uSource: 0 },
+      render: { uState: 0, uBody: 1 },
+    };
+    for (const [name, units] of Object.entries(samplers)) {
+      const p = this.pr[name];
+      p.use();
+      for (const [uniform, unit] of Object.entries(units)) gl.uniform1i(p.uniforms[uniform], unit);
+    }
   }
 
   /** Fill a lamp `aspect` wide with `amount` (fraction of the box) of wax. */
@@ -133,6 +152,8 @@ export class LavaFluid {
     const count = Math.min(MAX_SPOTS, Math.max(1, Math.round(aspect * 1.6)));
     this.spots = Array.from({ length: count }, () => ({ x: 0, phase: rand() * 6.283, speed: 0.04 + rand() * 0.04, strength: 1 }));
     placeSpots(this.spots, this.time);
+    this.spotData.fill(0);
+    this.bodyDirty = true;
 
     // About a third of the wax starts in blobs, warm low and cool high; the rest pools.
     let total = amount * aspect;
@@ -148,7 +169,6 @@ export class LavaFluid {
 
     const p = this.pr.init;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, 1 / this.cols, 1 / P.ROWS);
     gl.uniform1f(p.uniforms.uAspect, aspect);
     gl.uniform1f(p.uniforms.uPool, total / aspect);
     gl.uniform4fv(p.uniforms['uSeeds[0]'], new Float32Array(seeds.concat(Array(MAX_SEEDS * 4).fill(0)).slice(0, MAX_SEEDS * 4)));
@@ -176,6 +196,8 @@ export class LavaFluid {
     this.divergence?.dispose();
     this.flux?.dispose();
     this.mass?.dispose();
+    for (const pair of this.pairs) gl.deleteFramebuffer(pair.target.fbo);
+    this.pairs.length = 0;
     this.cols = cols;
     const rows = P.ROWS;
     this.velocity = createDoubleFBO(gl, cols, rows, gl.RG16F, gl.RG, gl.HALF_FLOAT, gl.LINEAR);
@@ -194,6 +216,29 @@ export class LavaFluid {
     gl.bindTexture(gl.TEXTURE_2D, this.mass.texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
     this.massLod = 8;
+    for (const p of Object.values(this.pr)) {
+      p.use();
+      if (p.uniforms.uTexel) gl.uniform2f(p.uniforms.uTexel, 1 / cols, 1 / rows);
+    }
+    const p = this.pr.render;
+    p.use();
+    gl.uniform2f(p.uniforms.uSimSize, cols, rows);
+  }
+
+  private blitPair(a: FBO, b: FBO) {
+    // Keep attachment pairs intact across ping-pong; reattaching every step
+    // would make the driver revalidate them. Only the framebuffer is owned here.
+    for (const pair of this.pairs) {
+      if (pair.a === a && pair.b === b) { this.blit(pair.target); return; }
+    }
+    const gl = this.gl;
+    const target = { ...a, fbo: gl.createFramebuffer()! };
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, a.texture, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, b.texture, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    this.pairs.push({ a, b, target });
+    this.blit(target);
   }
 
   /** The grid only changes with the box's shape; a new shape refills the lamp. */
@@ -208,41 +253,34 @@ export class LavaFluid {
 
   private step(dt: number, heat: number) {
     const { gl, pr, velocity, state, pressure, blit } = this;
-    const tx = 1 / this.cols, ty = 1 / P.ROWS;
     this.time += dt;
     placeSpots(this.spots, this.time);
     gl.disable(gl.BLEND);
 
     let p = pr.advect;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
     gl.uniform1f(p.uniforms.uDt, dt);
-    gl.uniform1i(p.uniforms.uVelocity, velocity.read.attach(0));
-    gl.uniform1i(p.uniforms.uSource, state.read.attach(1));
-    blit(state.write);
-    gl.uniform1i(p.uniforms.uSource, velocity.read.attach(1));
-    blit(velocity.write);
+    velocity.read.attach(0);
+    state.read.attach(1);
+    this.blitPair(state.write, velocity.write);
     state.swap();
     velocity.swap();
 
     p = pr.viscosity;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uState, state.read.attach(1));
+    state.read.attach(1);
     gl.uniform1f(p.uniforms.uViscWax, P.VISC_WAX);
     gl.uniform1f(p.uniforms.uViscLiquid, P.VISC_LIQUID);
     for (let i = 0; i < P.VISC_PASSES; i++) {
-      gl.uniform1i(p.uniforms.uVelocity, velocity.read.attach(0));
+      velocity.read.attach(0);
       blit(velocity.write);
       velocity.swap();
     }
 
     p = pr.forces;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
     gl.uniform1f(p.uniforms.uDt, dt);
-    gl.uniform1i(p.uniforms.uVelocity, velocity.read.attach(0));
-    gl.uniform1i(p.uniforms.uState, state.read.attach(1));
+    velocity.read.attach(0);
     gl.uniform1f(p.uniforms.uGravity, P.GRAVITY);
     gl.uniform1f(p.uniforms.uTension, P.TENSION);
     gl.uniform1f(p.uniforms.uDamp, P.DAMP);
@@ -254,45 +292,36 @@ export class LavaFluid {
 
     p = pr.heat;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
     gl.uniform1f(p.uniforms.uDt, dt);
-    gl.uniform1i(p.uniforms.uState, state.read.attach(0));
+    state.read.attach(0);
     gl.uniform1f(p.uniforms.uConduct, P.CONDUCT);
     gl.uniform1f(p.uniforms.uHeat, P.HEAT * heat);
     gl.uniform1f(p.uniforms.uZone, P.ZONE);
-    const spots = new Float32Array(MAX_SPOTS * 2);
-    this.spots.forEach((s, i) => spots.set([s.x, s.strength], i * 2));
-    gl.uniform2fv(p.uniforms['uSpots[0]'], spots);
+    for (let i = 0; i < this.spots.length; i++) {
+      this.spotData[i * 2] = this.spots[i].x;
+      this.spotData[i * 2 + 1] = this.spots[i].strength;
+    }
+    gl.uniform2fv(p.uniforms['uSpots[0]'], this.spotData);
     gl.uniform1f(p.uniforms.uSpotW, P.SPOT_W);
     gl.uniform1f(p.uniforms.uBaseHeat, P.BASE_HEAT);
     gl.uniform1f(p.uniforms.uCoolWax, P.COOL_WAX);
     gl.uniform1f(p.uniforms.uCoolSurface, P.COOL_SURFACE);
     gl.uniform1f(p.uniforms.uAmbient, P.AMBIENT);
-    blit(state.write);
+    this.blitPair(state.write, this.flux);
     state.swap();
-
-    p = pr.sharpenFlux;
-    p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uState, state.read.attach(0));
-    blit(this.flux);
     p = pr.mass;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uState, state.read.attach(0));
+    state.read.attach(0);
     blit(this.mass);
-    gl.bindTexture(gl.TEXTURE_2D, this.mass.texture);
+    this.mass.attach(2);
     gl.generateMipmap(gl.TEXTURE_2D);
 
     p = pr.sharpen;
     p.use();
-    gl.uniform1i(p.uniforms.uMass, this.mass.attach(2));
     gl.uniform1f(p.uniforms.uMassLod, this.massLod);
     gl.uniform1f(p.uniforms.uTarget, this.target);
     gl.uniform1f(p.uniforms.uHold, P.HOLD * dt * 60);
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uState, state.read.attach(0));
-    gl.uniform1i(p.uniforms.uFlux, this.flux.attach(1));
+    this.flux.attach(1);
     gl.uniform1f(p.uniforms.uEps, P.SHARP_EPS);
     gl.uniform1f(p.uniforms.uStrength, P.SHARP_STEP);
     gl.uniform1f(p.uniforms.uPress, P.SHARP_PRESS);
@@ -301,49 +330,55 @@ export class LavaFluid {
 
     p = pr.divergence;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uVelocity, velocity.read.attach(0));
+    velocity.read.attach(0);
     blit(this.divergence);
     p = pr.pressure;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uDivergence, this.divergence.attach(1));
+    this.divergence.attach(1);
+    gl.activeTexture(gl.TEXTURE0);
     for (let i = 0; i < P.PRESSURE_ITERS; i++) {
-      gl.uniform1i(p.uniforms.uPressure, pressure.read.attach(0));
-      blit(pressure.write);
+      gl.bindTexture(gl.TEXTURE_2D, pressure.read.texture);
+      // The first blit sets the VAO and viewport for the whole solve.
+      if (i === 0) blit(pressure.write);
+      else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, pressure.write.fbo);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
       pressure.swap();
     }
     p = pr.subtract;
     p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uPressure, pressure.read.attach(0));
-    gl.uniform1i(p.uniforms.uVelocity, velocity.read.attach(1));
+    pressure.read.attach(0);
+    velocity.read.attach(1);
     blit(velocity.write);
     velocity.swap();
+    this.bodyDirty = true;
   }
 
   /** Draw the lamp to the screen. */
   render(colors: { liquid: number[]; deep: number[]; hot: number[] }, glow: number, reveal: number, rainbow: boolean, setGrain: (u: Record<string, WebGLUniformLocation | null>) => void) {
     const { gl, pr, body, blit } = this;
-    const tx = 1 / this.cols, ty = 1 / P.ROWS;
+    let p: Program;
+    if (this.bodyDirty) {
+      const tx = 1 / this.cols, ty = 1 / P.ROWS;
+      p = pr.blur;
+      p.use();
+      this.state.read.attach(0);
+      gl.uniform2f(p.uniforms.uDir, tx, 0);
+      blit(body.write);
+      body.swap();
+      body.read.attach(0);
+      gl.uniform2f(p.uniforms.uDir, 0, ty);
+      blit(body.write);
+      body.swap();
 
-    let p = pr.blur;
-    p.use();
-    gl.uniform2f(p.uniforms.uTexel, tx, ty);
-    gl.uniform1i(p.uniforms.uSource, this.state.read.attach(0));
-    gl.uniform2f(p.uniforms.uDir, tx, 0);
-    blit(body.write);
-    body.swap();
-    gl.uniform1i(p.uniforms.uSource, body.read.attach(0));
-    gl.uniform2f(p.uniforms.uDir, 0, ty);
-    blit(body.write);
-    body.swap();
+      this.bodyDirty = false;
+    }
 
     p = pr.render;
     p.use();
-    gl.uniform1i(p.uniforms.uState, this.state.read.attach(0));
-    gl.uniform1i(p.uniforms.uBody, body.read.attach(1));
-    gl.uniform2f(p.uniforms.uSimSize, this.cols, P.ROWS);
+    this.state.read.attach(0);
+    body.read.attach(1);
     gl.uniform3fv(p.uniforms.uLiquid, colors.liquid);
     gl.uniform3fv(p.uniforms.uDeep, colors.deep);
     gl.uniform3fv(p.uniforms.uHot, colors.hot);

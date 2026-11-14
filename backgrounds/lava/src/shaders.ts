@@ -18,7 +18,7 @@ export const MAX_SEEDS = 8;
 const HEAD = /* glsl */ `#version 300 es
 precision highp float;
 in vec2 vUv;
-out vec4 outColor;
+layout(location = 0) out vec4 outColor;
 uniform vec2 uTexel;
 `;
 
@@ -45,14 +45,16 @@ void main() {
 }
 `;
 
-/** Semi-Lagrangian advection of any field through the velocity. */
+/** Advect both fields through the same velocity and backtrace. */
 export const ADVECT = HEAD + /* glsl */ `
 uniform sampler2D uVelocity;
-uniform sampler2D uSource;
+uniform sampler2D uState;
+layout(location = 1) out vec4 outVelocity;
 uniform float uDt;
 void main() {
   vec2 back = vUv - uDt * texture(uVelocity, vUv).xy * uTexel;
-  outColor = texture(uSource, back);
+  outColor = texture(uState, back);
+  outVelocity = texture(uVelocity, back);
 }
 `;
 
@@ -101,8 +103,7 @@ vec2 grad(vec2 uv) {
   return 0.5 * vec2(phi(uv + vec2(uTexel.x, 0.0)) - phi(uv - vec2(uTexel.x, 0.0)),
                     phi(uv + vec2(0.0, uTexel.y)) - phi(uv - vec2(0.0, uTexel.y)));
 }
-vec2 normal(vec2 uv) {
-  vec2 g = grad(uv);
+vec2 normal(vec2 g) {
   float l = length(g);
   return l > 1e-3 ? g / l : vec2(0.0);
 }
@@ -116,7 +117,14 @@ void main() {
 
   vec2 g = grad(vUv);
   if (dot(g, g) > 1e-6) {
-    float kappa = -0.5 * ((normal(vUv + dx).x - normal(vUv - dx).x) + (normal(vUv + dy).y - normal(vUv - dy).y));
+    // Neighbor normals share the center and four diagonals.
+    float rt = phi(vUv + dx + dy), rb = phi(vUv + dx - dy);
+    float lt = phi(vUv - dx + dy), lb = phi(vUv - dx - dy);
+    vec2 nr = normal(0.5 * vec2(phi(vUv + dx + dx) - s.r, rt - rb));
+    vec2 nl = normal(0.5 * vec2(s.r - phi(vUv - dx - dx), lt - lb));
+    vec2 nt = normal(0.5 * vec2(rt - lt, phi(vUv + dy + dy) - s.r));
+    vec2 nb = normal(0.5 * vec2(rb - lb, s.r - phi(vUv - dy - dy)));
+    float kappa = -0.5 * ((nr.x - nl.x) + (nt.y - nb.y));
     v += uDt * uTension * kappa * g;
   }
 
@@ -147,6 +155,7 @@ void main() {
  */
 export const HEAT = HEAD + /* glsl */ `
 uniform sampler2D uState;
+layout(location = 1) out vec4 outNormal;
 uniform float uDt;
 uniform float uConduct;     // per-step blend toward the neighboring wax's temperature
 uniform float uHeat;        // 1/s at a hot spot
@@ -182,23 +191,17 @@ void main() {
   tw += (ambient - tw) * (1.0 - exp(-uDt * (uCoolWax + uCoolSurface * exposure)));
 
   outColor = vec4(phi, phi * clamp(tw, 0.0, 1.0), s.ba);
-}
-`;
 
-/**
- * Sharpening, part 1: the edge's normal in each cell, from a Sobel gradient
- * of φ. Zero where there is no real edge, so stray traces of wax aren't
- * sharpened into specks.
- */
-export const SHARPEN_FLUX = HEAD + /* glsl */ `
-uniform sampler2D uState;
-float phi(vec2 o) { return texture(uState, vUv + o * uTexel).r; }
-void main() {
-  vec2 g = vec2(
-    (phi(vec2(1, -1)) + 2.0 * phi(vec2(1, 0)) + phi(vec2(1, 1))) - (phi(vec2(-1, -1)) + 2.0 * phi(vec2(-1, 0)) + phi(vec2(-1, 1))),
-    (phi(vec2(-1, 1)) + 2.0 * phi(vec2(0, 1)) + phi(vec2(1, 1))) - (phi(vec2(-1, -1)) + 2.0 * phi(vec2(0, -1)) + phi(vec2(1, -1)))) / 8.0;
-  float l = length(g);
-  outColor = vec4(l > 0.03 ? g / l : vec2(0.0), 0.0, 1.0);
+  // Heat leaves φ alone, so its neighbors also give sharpening's Sobel
+  // normal. Keep its own threshold; surface tension uses a different normal.
+  float rb = texture(uState, vUv + vec2(uTexel.x, -uTexel.y)).r;
+  float rt = texture(uState, vUv + uTexel).r;
+  float lb = texture(uState, vUv - uTexel).r;
+  float lt = texture(uState, vUv + vec2(-uTexel.x, uTexel.y)).r;
+  vec2 g = vec2((rb + 2.0 * r.r + rt) - (lb + 2.0 * l.r + lt),
+                (lt + 2.0 * t.r + rt) - (lb + 2.0 * b.r + rb)) / 8.0;
+  float len = length(g);
+  outNormal = vec4(len > 0.03 ? g / len : vec2(0.0), 0.0, 1.0);
 }
 `;
 
@@ -380,28 +383,31 @@ void main() {
     glowHot = mix(glowHot, hot, w);
   }
 
-  // The soft body: its slope tilts the normal, so blobs read as rounded.
-  vec2 e = 1.0 / uSimSize;
   float body = texture(uBody, vUv).r;
-  vec2 g = vec2(texture(uBody, vUv + vec2(e.x, 0.0)).r - texture(uBody, vUv - vec2(e.x, 0.0)).r,
-                texture(uBody, vUv + vec2(0.0, e.y)).r - texture(uBody, vUv - vec2(0.0, e.y)).r);
-  vec3 n = normalize(vec3(-g * 2.2, 1.0));
 
   vec3 liquid = toLinear(uLiquid);
   float bulb = exp(-pow((vUv.x - 0.5) * 1.4, 2.0) - vUv.y * 3.0);
   vec3 col = liquid + max(fromOklab(glowHot), 0.0) * bulb * 0.12 * uGlow;
   col += max(fromOklab(mix(glowDeep, glowHot, 0.4)), 0.0) * body * body * (0.11 + 0.12 * warm) * uGlow;
 
-  float rim = pow(1.0 - n.z, 1.2);
-  float low = clamp(-n.y * 0.5 + (1.0 - vUv.y) * 0.3 + warm * 0.5, 0.0, 1.0);
-  vec3 wax = max(fromOklab(mix(deep, hot, clamp(rim * 0.9 + low * 0.6, 0.0, 1.0))), 0.0);
-  wax *= 0.7 + 0.4 * (1.0 - vUv.y) + 0.3 * warm;
-  float spec = pow(max(dot(n, normalize(vec3(-0.35, 0.55, 1.0))), 0.0), 30.0);
-  wax += spec * 0.12;
-
+  // Compute derivatives before branching: liquid pixels never use the wax
+  // normal or highlight, including their four extra body samples.
   float aa = fwidth(f) * 0.8 + 1e-4;
   float inside = smoothstep(TH - aa, TH + aa, f);
-  col = mix(col, wax, inside);
+  if (inside > 0.0) {
+    // Explicit LOD keeps sampling defined in divergent edge quads.
+    vec2 e = 1.0 / uSimSize;
+    vec2 g = vec2(textureLod(uBody, vUv + vec2(e.x, 0.0), 0.0).r - textureLod(uBody, vUv - vec2(e.x, 0.0), 0.0).r,
+                  textureLod(uBody, vUv + vec2(0.0, e.y), 0.0).r - textureLod(uBody, vUv - vec2(0.0, e.y), 0.0).r);
+    vec3 n = normalize(vec3(-g * 2.2, 1.0));
+    float rim = pow(1.0 - n.z, 1.2);
+    float low = clamp(-n.y * 0.5 + (1.0 - vUv.y) * 0.3 + warm * 0.5, 0.0, 1.0);
+    vec3 wax = max(fromOklab(mix(deep, hot, clamp(rim * 0.9 + low * 0.6, 0.0, 1.0))), 0.0);
+    wax *= 0.7 + 0.4 * (1.0 - vUv.y) + 0.3 * warm;
+    float spec = pow(max(dot(n, normalize(vec3(-0.35, 0.55, 1.0))), 0.0), 30.0);
+    wax += spec * 0.12;
+    col = mix(col, wax, inside);
+  }
   col = mix(liquid, col, uReveal);
 
   vec2 c = vUv - 0.5;
