@@ -40,6 +40,8 @@ export const DEFAULTS = {
   sheen: 0.35,
   /** Brightness of the glints that now and then run along a ribbon. */
   glints: 0.6,
+  /** While on, the ribbons swell in a slow rhythm, as if listening or speaking. Eases in and out. */
+  pulsing: false,
   /** Film grain. */
   grain: 0.015,
   /** Seconds for the grain to morph into a new pattern; 0 freezes it. */
@@ -63,6 +65,8 @@ const REVEAL_MS = 1200;
 const FRINGE_BASE = 0.07;
 /** Sheen strength per palette: silver gets its color from the film. */
 const SHEEN: Partial<Record<PaletteName, number>> = { silver: 1.3 };
+/** Seconds per swell while `pulsing`. */
+const PULSE_PERIOD = 1.6;
 /** Pulse energy decay, per second. */
 const PULSE_DECAY = 1.6;
 /** How hard overlaps burn to white. */
@@ -120,7 +124,10 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
   let time = 0;
   let reveal = reducedMotion.matches ? 1 : 0;
   let grainClock = 0;
-  let energy = 0;
+  let energy = 0;      // one-shot pulse(), decaying
+  let pulseMix = 0;    // eases toward 1 while pulsing, 0 when not
+  let pulseClock = 0;  // seconds of pulsing, for the swell's phase
+  let surge = 0;       // what the frame uses: both combined
 
   function setRibbons(p: Program, box: [number, number], center: [number, number], targetWidth: number) {
     const u = p.uniforms;
@@ -130,7 +137,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     const fill = config.placement === 'fill';
     const opts = {
       ...config,
-      amplitude: config.amplitude * k * (fill ? 1.2 : 1) * (1 + 0.3 * energy),
+      amplitude: config.amplitude * k * (fill ? 1.2 : 1) * (1 + 0.3 * surge),
       spread: config.spread * k,
       thickness: config.thickness * (fill ? 0.65 : 1),
     };
@@ -171,7 +178,13 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     } else {
       drawn = '';
       energy *= Math.exp((-PULSE_DECAY * rawDtMs) / 1000);
-      time += dt * config.speed * (1 + 2 * energy);
+      pulseMix += ((config.pulsing ? 1 : 0) - pulseMix) * Math.min(1, rawDtMs / 500);
+      if (pulseMix > 0.001) pulseClock += rawDtMs / 1000;
+      else pulseClock = 0;
+      // A smooth swell from rest, peaking once per period.
+      const swell = (0.5 - 0.5 * Math.cos((pulseClock / PULSE_PERIOD) * Math.PI * 2)) ** 2;
+      surge = energy + pulseMix * (0.25 + 0.6 * swell);
+      time += dt * config.speed * (1 + 2 * surge);
       reveal = Math.min(1, reveal + rawDtMs / REVEAL_MS);
       if (config.grainPeriod > 0) grainClock += rawDtMs / 1000 / config.grainPeriod;
     }
@@ -204,10 +217,10 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     const u = composite.uniforms;
     gl.uniform1i(u.uHalo, halo!.attach(0));
     gl.uniform1i(u.uWide, wide!.attach(1));
-    gl.uniform1f(u.uGlow, config.glow * (1 + 0.8 * energy));
+    gl.uniform1f(u.uGlow, config.glow * (1 + 0.8 * surge));
     // Breathes: a slow swell in brightness on top of the ribbons' own.
     const breath = 0.92 + 0.08 * Math.sin(time * 0.55 + 0.6);
-    gl.uniform1f(u.uBright, config.intensity * breath * (1 + 0.5 * energy) * (1 - Math.pow(1 - reveal, 3)));
+    gl.uniform1f(u.uBright, config.intensity * breath * (1 + 0.5 * surge) * (1 - Math.pow(1 - reveal, 3)));
     setGrain(gl, u, config.grain, grainClock);
     blit(null);
   }

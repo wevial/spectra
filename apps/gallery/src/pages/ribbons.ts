@@ -23,7 +23,7 @@ panel((gui) => {
   form.add(c, 'depth', 0, 1, 0.01);
   form.add(c, 'sheen', 0, 1, 0.01);
   form.add(c, 'glints', 0, 2, 0.05);
-  form.add({ pulse: () => fx.pulse() }, 'pulse');
+  form.add(c, 'pulsing').name('pulse');
 
   const light = gui.addFolder('light');
   light.add(c, 'intensity', 0, 3, 0.05);

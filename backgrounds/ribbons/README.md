@@ -9,8 +9,9 @@ background, not a cursor effect: it ignores the pointer.
 import { mount } from '@spectra/ribbons';
 
 const ribbons = mount(document.querySelector('header'), { palette: 'silver', placement: 'fill' });
-ribbons.config.count = 5; // live tuning, picked up next frame
-ribbons.pulse();          // a surge that settles over ~2s, e.g. on send or while listening
+ribbons.config.count = 5;      // live tuning, picked up next frame
+ribbons.config.pulsing = true; // swell in a slow rhythm, e.g. while listening
+ribbons.pulse();               // one surge that settles over ~2s, e.g. on send
 ribbons.destroy();
 ```
 
@@ -82,4 +83,4 @@ It mounts black and fades the ribbons in over 1.2s. Requires WebGL2 +
 
 With `prefers-reduced-motion` the drift, breathing, glints and grain freeze
 into one static frame (redrawn only when the config or size changes), the
-fade-in is skipped and `pulse()` does nothing.
+fade-in is skipped and `pulse()` and `pulsing` do nothing.
