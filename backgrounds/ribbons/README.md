@@ -29,13 +29,13 @@ of the pixel's position, evaluated per pixel.
 1. **Ribbons.** Each ribbon has a frame (center, angle, length) in which x
    runs -1..1 between its two pinch points. Centered and full-bleed, every
    ribbon shares one frame; `fill` spreads them over the height, leans the
-   outer ones toward the middle so they cross, and lets the frames wander. A lens envelope
-   e(x) = 1 − x² carries both the centerline (two sines, `amplitude` tall,
-   fanned apart by `spread`) and the thickness (e^1.25, plus a slow swell
-   running along the ribbon), so each ribbon is thickest in the middle and
-   tapers to nothing at its ends. Frequencies, phases and drift
-   speeds differ per ribbon and are incommensurate, so the braid keeps
-   re-forming; amplitude and thickness breathe on 10–30s periods.
+   outer ones toward the middle so they cross, and lets the frames wander.
+   A lens envelope e(x) = 1 − x² carries both the centerline (two sines,
+   `amplitude` tall, fanned apart by `spread`) and the thickness (e^1.25,
+   plus a slow swell running along the ribbon), so each ribbon is thickest
+   in the middle and tapers to nothing at its ends. Frequencies, phases and
+   drift speeds differ per ribbon and are incommensurate, so the braid
+   keeps re-forming; amplitude and thickness breathe on 10–30s periods.
 2. **Cross-section.** The distance to a ribbon is its vertical offset
    divided by √(1 + slope²), the perpendicular distance to first order, so
    steep stretches keep their width. The profile is soft-edged and brighter
