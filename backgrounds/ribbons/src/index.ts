@@ -34,11 +34,9 @@ export const DEFAULTS = {
    * and pinch points past the sides, spread over the whole box.
    */
   placement: 'full' as Placement,
-  /** How much the ribbons twist along their length, narrowing to bright lines where they turn edge-on. */
-  twist: 0.8,
   /** Front-to-back depth: back ribbons are smaller, softer and dimmer. */
   depth: 0.6,
-  /** Thin-film color shift with the twist and across each ribbon. */
+  /** Thin-film color shift, rolling along and across each ribbon. */
   sheen: 0.35,
   /** Brightness of the glints that now and then run along a ribbon. */
   glints: 0.6,
@@ -147,7 +145,6 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     gl.uniform1f(u.uFringe, FRINGE_BASE * (FRINGE[config.palette] ?? 1));
     gl.uniform1f(u.uWhite, WHITE);
     gl.uniform4fv(u['uExtra[0]'], r.extra);
-    gl.uniform1f(u.uTwist, config.twist);
     gl.uniform1f(u.uDepth, config.depth);
     gl.uniform1f(u.uSheen, config.sheen * (SHEEN[config.palette] ?? 1));
     gl.uniform1f(u.uGlints, config.glints);

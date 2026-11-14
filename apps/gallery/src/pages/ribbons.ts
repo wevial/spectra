@@ -20,7 +20,6 @@ panel((gui) => {
   ribbons.add(c, 'seed', 0, 100, 1);
 
   const form = gui.addFolder('form');
-  form.add(c, 'twist', 0, 1, 0.01);
   form.add(c, 'depth', 0, 1, 0.01);
   form.add(c, 'sheen', 0, 1, 0.01);
   form.add(c, 'glints', 0, 2, 0.05);

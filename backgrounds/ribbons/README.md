@@ -19,10 +19,9 @@ Palettes: `flare` (default), warm red and orange against cool blue and cyan;
 edges; `lagoon`; `orchid` (see `PALETTES`). `placement: 'full'` (default)
 runs the band edge to edge and swings it tall; `'center'` keeps it in the
 middle of the box, clear of the edges; `'fill'` gives each ribbon its own
-lane, tilt and pinch points, spread over the whole box. `twist`, `depth`,
-`sheen` and `glints` add form: ribbons that roll edge-on into bright lines,
-back ribbons softer and dimmer, a thin-film color shift, and glints of light
-that now and then run from end to end.
+lane, tilt and pinch points, spread over the whole box. `depth`, `sheen`
+and `glints` add form: back ribbons softer and dimmer, a thin-film color
+shift, and glints of light that now and then run from end to end.
 See `DEFAULTS` in `src/index.ts` for every option.
 
 ## How it works
@@ -40,14 +39,10 @@ of the pixel's position, evaluated per pixel.
    in the middle and tapers to nothing at its ends. Frequencies, phases and
    drift speeds differ per ribbon and are incommensurate, so the braid
    keeps re-forming; amplitude and thickness breathe on 10–30s periods.
-2. **Form.** Each ribbon twists along its length: where it turns edge-on
-   its width falls to a third and its light rises, as a strip of fabric
-   catching the light would. It never closes fully, which would read as a
-   pinch mid-ribbon. Ribbons sit at depths spread evenly
-   front to back; the back ones are a little smaller, their edges blurred
-   in proportion to their width, and dimmer. A thin-film sheen rotates the
-   hue with θ and across the width, and a Gaussian glint slides along x
-   every 14–26s.
+2. **Form.** Ribbons sit at depths spread evenly front to back; the back
+   ones are a little smaller, their edges blurred in proportion to their
+   width, and dimmer. A thin-film sheen rolls the hue slowly along and
+   across each ribbon, and a Gaussian glint slides along x every 14–26s.
 3. **Cross-section.** The distance to a ribbon is its vertical offset
    divided by √(1 + slope²), the perpendicular distance to first order, so
    steep stretches keep their width. The profile is soft-edged and brighter

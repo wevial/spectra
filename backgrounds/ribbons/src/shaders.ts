@@ -12,12 +12,9 @@ import { MAX_RIBBONS, MAX_TAPS } from './params';
 // e(x) = 1 - x² carries both the centerline and the thickness, so every
 // ribbon is thick in the middle and tapers to nothing at its pinch points.
 //
-// Each ribbon also twists along its length like a strip of fabric: where
-// it turns edge-on it narrows to a third of its width and brightens, as
-// the same light squeezes into a thinner band. Ribbons sit at different
-// depths: the back ones are softer and dimmer. A thin-film sheen shifts the
-// color with the twist and across the width, and now and then a glint of
-// light runs along a ribbon from one end to the other.
+// Ribbons sit at different depths: the back ones are softer and dimmer. A
+// thin-film sheen shifts the color along and across each ribbon, and now
+// and then a glint of light runs along a ribbon from one end to the other.
 //
 // Distance to a ribbon is the vertical offset from its centerline divided by
 // sqrt(1 + slope²): the perpendicular distance to first order, so steep
@@ -28,18 +25,17 @@ uniform int uCount;
 uniform vec4 uWave[${MAX_RIBBONS}];   // freq 1, phase 1, freq 2, phase 2
 uniform vec4 uShape[${MAX_RIBBONS}];  // amplitude, offset, half-thickness, swell phase
 uniform vec4 uFrame[${MAX_RIBBONS}];  // center x, y, angle, scale: where each ribbon sits
-uniform vec4 uExtra[${MAX_RIBBONS}];  // twist frequency, twist phase, depth 0..1, glint position
+uniform vec4 uExtra[${MAX_RIBBONS}];  // sheen frequency, sheen phase, depth 0..1, glint position
 uniform vec3 uColor[${MAX_RIBBONS}];  // linear
 uniform float uFringe;                // chromatic split, fraction of the half-width
 uniform float uWhite;                 // how hard overlaps burn to white
-uniform float uTwist;                 // 0 flat, 1 fully twisting
 uniform float uDepth;                 // how much depth softens and dims the back ribbons
 uniform float uSheen;                 // thin-film color shift
 uniform float uGlints;                // brightness of the traveling glints
 
 // Cross-section at distance d from the centerline, half-width h, pixel size
-// aa, extra edge blur for depth. Soft-edged and brighter toward the rim than the middle, like light
-// grazing the edge of a translucent tube. A ribbon thinner than a pixel is
+// aa, extra edge blur for depth. Soft-edged and brighter toward the rim
+// than the middle, like light grazing the edge of a translucent tube. A ribbon thinner than a pixel is
 // drawn one pixel wide and dimmed in proportion, so the tapered ends fade
 // out instead of breaking into crawling dashes.
 float section(float d, float h, float aa, float blur) {
@@ -76,18 +72,10 @@ vec3 ribbons(vec2 p) {
     // Thick in the middle, a slow swell running along it.
     float h = s.z * pow(taper, 1.25) * (1.0 + 0.3 * sin(2.3 * x + s.w));
     vec4 g = uExtra[i];
-    // Twist: narrower and brighter where the ribbon turns edge-on.
-    float th = g.x * x + g.y;
-    float ct = abs(cos(th));
-    // Never closer than a third of the face-on width: a full close reads as
-    // a pinch mid-ribbon rather than a roll.
-    float face = 0.35 + 0.65 * ct;
-    h *= mix(1.0, face, uTwist);
-    float gain = mix(1.0, 1.0 / face, uTwist * 0.6);
     // Depth: back ribbons get softer edges and less light.
     float z = g.z * uDepth;
     float blur = z * h * 0.9;
-    gain *= 1.0 - 0.5 * z;
+    float gain = 1.0 - 0.5 * z;
     // A glint running along the ribbon.
     float gx = (x - g.w) / 0.1;
     gain *= 1.0 + uGlints * 2.5 * exp(-gx * gx);
@@ -99,8 +87,8 @@ vec3 ribbons(vec2 p) {
       section(abs(d - split), h, aa, blur),
       section(abs(d), h, aa, blur),
       section(abs(d + split), h, aa, blur));
-    // Thin-film sheen: the hue rotates with the twist and across the width.
-    float film = 2.0 * th + 1.5 * d / max(h, aa);
+    // Thin-film sheen: the hue rolls slowly along the ribbon and across it.
+    float film = 2.0 * (g.x * x + g.y) + 1.5 * d / max(h, aa);
     vec3 tint = 1.0 + uSheen * 0.6 * cos(film + vec3(0.0, 2.094, 4.189));
     col += uColor[i] * tint * sec * gain;
     sum += sec.g;

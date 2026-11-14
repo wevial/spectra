@@ -55,7 +55,7 @@ export interface RibbonOptions {
  *   x running -1..1 from one pinch point to the other;
  * - shape: amplitude, vertical offset, half-thickness at the middle, and the
  *   phase of a slow swell that runs along the ribbon;
- * - extra: twist frequency and phase, depth (0 front, 1 back), and where a
+ * - extra: sheen frequency and phase, depth (0 front, 1 back), and where a
  *   traveling glint is along x (past ±1.4 when none is running).
  *
  * Every ribbon drifts at its own incommensurate speeds, so the braid never
@@ -90,12 +90,12 @@ export function ribbonParams(o: RibbonOptions, t: number) {
     const thick = far * o.thickness * (0.7 + 0.5 * r(13)) * (0.9 + 0.1 * Math.sin(t * (0.3 + 0.1 * r(14)) + i)) * breath;
     shape.set([amp, offset, thick, r(15) * 6.283 + t * (0.25 + 0.15 * r(16))], i * 4);
 
-    // About a half to one full turn along the ribbon, rolling slowly.
-    const twistSpeed = (0.12 + 0.13 * r(17)) * (r(18) < 0.5 ? -1 : 1);
+    // The sheen's hue rolls about a half to one full cycle along the ribbon.
+    const sheenSpeed = (0.12 + 0.13 * r(17)) * (r(18) < 0.5 ? -1 : 1);
     // A glint every 14–26s, taking ~3.5s to cross.
     const period = 14 + 12 * r(19);
     const since = ((t / period + r(20)) % 1) * period;
-    extra.set([1.8 + 1.6 * r(21), r(22) * 6.283 + t * twistSpeed, z, -1.4 + (since / 3.5) * 2.8], i * 4);
+    extra.set([1.8 + 1.6 * r(21), r(22) * 6.283 + t * sheenSpeed, z, -1.4 + (since / 3.5) * 2.8], i * 4);
   }
   return { count, wave, shape, extra };
 }
