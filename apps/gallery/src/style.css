@@ -217,6 +217,14 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
     repeating-radial-gradient(circle at 70% 65%, transparent 0 22px, rgba(140, 190, 255, 0.14) 24px, transparent 27px),
     #000;
 }
+.ribbons-fallback {
+  background:
+    radial-gradient(34% 7% at 46% 47%, rgba(255, 70, 30, 0.55), transparent 70%),
+    radial-gradient(34% 7% at 54% 53%, rgba(40, 120, 255, 0.55), transparent 70%),
+    radial-gradient(20% 4% at 50% 50%, rgba(255, 255, 255, 0.5), transparent 70%),
+    radial-gradient(45% 20% at 50% 50%, rgba(120, 90, 160, 0.18), transparent 70%),
+    #000;
+}
 .wisp-fallback {
   background:
     radial-gradient(40% 35% at 35% 40%, rgba(155, 59, 26, 0.35), transparent 70%),

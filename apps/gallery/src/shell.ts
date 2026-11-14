@@ -3,7 +3,7 @@ import GUI from 'lil-gui';
 /** Every effect by kind: cursor effects react to the mouse, backgrounds don't. */
 export const GROUPS = {
   cursors: ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'film', 'wisp'],
-  backgrounds: ['haze', 'plume', 'caustics'],
+  backgrounds: ['haze', 'plume', 'caustics', 'ribbons'],
 } as const;
 
 export const EFFECTS = [...GROUPS.cursors, ...GROUPS.backgrounds];

@@ -21,6 +21,7 @@
     "@spectra/mycelium": "workspace:*",
     "@spectra/nebula": "workspace:*",
     "@spectra/plume": "workspace:*",
+    "@spectra/ribbons": "workspace:*",
     "@spectra/riso": "workspace:*",
     "@spectra/wisp": "workspace:*",
     "lil-gui": "^0.20.0"

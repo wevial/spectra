@@ -26,6 +26,7 @@
         "@spectra/mycelium": "workspace:*",
         "@spectra/nebula": "workspace:*",
         "@spectra/plume": "workspace:*",
+        "@spectra/ribbons": "workspace:*",
         "@spectra/riso": "workspace:*",
         "@spectra/wisp": "workspace:*",
         "lil-gui": "^0.20.0",
@@ -54,6 +55,13 @@
       "version": "0.1.0",
       "dependencies": {
         "@spectra/nebula": "workspace:*",
+      },
+    },
+    "backgrounds/ribbons": {
+      "name": "@spectra/ribbons",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
       },
     },
     "cursors/aurora": {
@@ -357,6 +365,8 @@
     "@spectra/nebula": ["@spectra/nebula@workspace:cursors/nebula"],
 
     "@spectra/plume": ["@spectra/plume@workspace:backgrounds/plume"],
+
+    "@spectra/ribbons": ["@spectra/ribbons@workspace:backgrounds/ribbons"],
 
     "@spectra/riso": ["@spectra/riso@workspace:cursors/riso"],
 

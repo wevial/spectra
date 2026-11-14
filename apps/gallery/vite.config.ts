@@ -29,6 +29,7 @@ export default defineConfig({
         plume: page('plume/index.html'),
         caustics: page('caustics/index.html'),
         wisp: page('wisp/index.html'),
+        ribbons: page('ribbons/index.html'),
       },
     },
   },

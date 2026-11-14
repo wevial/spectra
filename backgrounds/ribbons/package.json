@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/ribbons",
+  "version": "0.1.0",
+  "description": "Translucent ribbons of colored light ripple across a black field, pinched at both ends, crossing and adding up to white where they overlap.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}
