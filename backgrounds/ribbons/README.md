@@ -14,9 +14,9 @@ ribbons.pulse();          // a surge that settles over ~2s, e.g. on send or whil
 ribbons.destroy();
 ```
 
-Palettes: `flare` (default), warm red and orange against cool blue and cyan;
-`spectrum`, hues around the wheel; `silver`, near-white with faint spectral
-edges; `lagoon`; `orchid` (see `PALETTES`). `placement: 'full'` (default)
+Palettes: `silver` (default), near-white with faint spectral edges and a
+pearly sheen; `flare`, warm red and orange against cool blue and cyan;
+`spectrum`, hues around the wheel; `lagoon`; `orchid` (see `PALETTES`). `placement: 'full'` (default)
 runs the band edge to edge and swings it tall; `'center'` keeps it in the
 middle of the box, clear of the edges; `'fill'` gives each ribbon its own
 lane, tilt and pinch points, spread over the whole box. `depth`, `sheen`
@@ -47,10 +47,11 @@ of the pixel's position, evaluated per pixel.
    divided by √(1 + slope²), the perpendicular distance to first order, so
    steep stretches keep their width. The profile is soft-edged and brighter
    toward the rim than the middle, like light grazing the edge of a
-   translucent tube. Every edge is smoothed over `fwidth` of that distance,
-   one pixel, so nothing aliases at any size or DPR; a ribbon thinner than a
-   pixel is drawn a pixel wide and dimmed in proportion, so the pinched ends
-   fade out instead of crawling.
+   translucent tube. Every edge is smoothed over one pixel, computed from
+   the target size rather than `fwidth`, so nothing aliases at any size or
+   DPR and a pixel can skip the ribbons it's nowhere near (most are near one
+   or two). A ribbon thinner than a pixel is drawn a pixel wide and dimmed
+   in proportion, so the pinched ends fade out instead of crawling.
 4. **Light.** Ribbons add in linear light. Where they overlap, an extra
    white term grows with the overlap; a shoulder rolls highlights off and
    bleeds what spills past one channel into the others, so hot crossings go

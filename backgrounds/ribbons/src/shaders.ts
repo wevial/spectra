@@ -18,8 +18,10 @@ import { MAX_RIBBONS, MAX_TAPS } from './params';
 //
 // Distance to a ribbon is the vertical offset from its centerline divided by
 // sqrt(1 + slope²): the perpendicular distance to first order, so steep
-// stretches keep their width instead of thinning. Its fwidth is one pixel in
-// those units, which sets the antialiasing width of every edge.
+// stretches keep their width instead of thinning. One pixel in those units
+// (uPixel, over the ribbon's scale) sets the antialiasing width of every
+// edge. It's computed rather than taken from fwidth so that a pixel can skip
+// the ribbons it's nowhere near: most pixels are close to one or two.
 const RIBBONS = /* glsl */ `
 uniform int uCount;
 uniform vec4 uWave[${MAX_RIBBONS}];   // freq 1, phase 1, freq 2, phase 2
@@ -32,11 +34,12 @@ uniform float uWhite;                 // how hard overlaps burn to white
 uniform float uDepth;                 // how much depth softens and dims the back ribbons
 uniform float uSheen;                 // thin-film color shift
 uniform float uGlints;                // brightness of the traveling glints
+uniform float uPixel;                 // one pixel of the target, in box units
 
 // Cross-section at distance d from the centerline, half-width h, pixel size
 // aa, extra edge blur for depth. Soft-edged and brighter toward the rim
-// than the middle, like light grazing the edge of a translucent tube. A ribbon thinner than a pixel is
-// drawn one pixel wide and dimmed in proportion, so the tapered ends fade
+// than the middle, like light grazing the edge of a translucent tube. A
+// ribbon thinner than a pixel is drawn one pixel wide and dimmed in proportion, so the tapered ends fade
 // out instead of breaking into crawling dashes.
 float section(float d, float h, float aa, float blur) {
   float he = max(h, aa);
@@ -68,13 +71,15 @@ vec3 ribbons(vec2 p) {
     float c = e * wav;
     float dc = de * wav + e * dwav;
     float d = (q.y - c) * inversesqrt(1.0 + dc * dc);
-    float aa = fwidth(d);
+    float aa = 1.2 * uPixel / f.w;
     // Thick in the middle, a slow swell running along it.
     float h = s.z * pow(taper, 1.25) * (1.0 + 0.3 * sin(2.3 * x + s.w));
     vec4 g = uExtra[i];
     // Depth: back ribbons get softer edges and less light.
     float z = g.z * uDepth;
     float blur = z * h * 0.9;
+    // Nowhere near this ribbon: it adds nothing here.
+    if (abs(d) > h * (1.0 + uFringe) + blur + 2.0 * aa) continue;
     float gain = 1.0 - 0.5 * z;
     // A glint running along the ribbon.
     float gx = (x - g.w) / 0.1;
@@ -100,7 +105,7 @@ vec3 ribbons(vec2 p) {
 }
 `;
 
-// Bloom seed: the ribbon field at quarter CSS resolution. fwidth is four
+// Bloom seed: the ribbon field at quarter CSS resolution. A pixel is four
 // CSS px here, so the ribbons come out already softened.
 export const SEED = /* glsl */ `#version 300 es
 precision highp float;

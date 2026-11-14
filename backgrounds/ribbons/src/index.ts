@@ -13,7 +13,7 @@ export { PALETTES } from './params';
 export type { PaletteName, Placement } from './params';
 
 export const DEFAULTS = {
-  palette: 'flare' as PaletteName,
+  palette: 'silver' as PaletteName,
   /** Number of ribbons, 1–6. */
   count: 4,
   /** How far the ribbons swing up and down, in half-spans. */
@@ -122,7 +122,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
   let grainClock = 0;
   let energy = 0;
 
-  function setRibbons(p: Program, box: [number, number], center: [number, number]) {
+  function setRibbons(p: Program, box: [number, number], center: [number, number], targetWidth: number) {
     const u = p.uniforms;
     // Full-bleed swings taller with the box, so the band reaches ~70% of its
     // height. Filling, ribbons are scaled up by their frames: thin them back.
@@ -136,6 +136,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     };
     const r = ribbonParams(opts, time);
     gl.uniform2f(u.uBox, box[0], box[1]);
+    gl.uniform1f(u.uPixel, box[0] / targetWidth);
     gl.uniform2f(u.uCenter, center[0], center[1]);
     gl.uniform1i(u.uCount, r.count);
     gl.uniform4fv(u['uWave[0]'], r.wave);
@@ -186,7 +187,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     const center: [number, number] = [0.5, 0.5];
 
     seed.use();
-    setRibbons(seed, box, center);
+    setRibbons(seed, box, center, halo!.width);
     blit(halo);
     blur.use();
     blurPass(halo!, haloScratch!, haloTaps, 1, 0);
@@ -199,7 +200,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
     }
 
     composite.use();
-    setRibbons(composite, box, center);
+    setRibbons(composite, box, center, canvas.width);
     const u = composite.uniforms;
     gl.uniform1i(u.uHalo, halo!.attach(0));
     gl.uniform1i(u.uWide, wide!.attach(1));
