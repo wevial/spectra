@@ -36,7 +36,13 @@ travels with it instead of blurring into the liquid. Each step:
    Viscosity, much higher in wax than in liquid, so blobs hold together. The
    coil: cool wax resting on the floor stays there and liquid the bulb heats
    rises off it, so the pool never lifts off as a sheet with liquid
-   underneath. No slip at the glass.
+   underneath. `LIQUID_LIFT` is liquid's upward acceleration relative to wax,
+   fading to zero over twice `FLOOR_HOLD`. It is applied as downward wax
+   acceleration: writing the lift as −L(y)φ instead of L(y)(1 − φ) removes
+   only a height-dependent pressure gradient. The relative buoyancy still
+   drives wax down and displaces liquid from beneath it; omitting that
+   gradient avoids a spurious upflow from the discrete pressure solve that
+   can leave sinking blobs hovering above the floor. No slip at the glass.
 3. **Heat.** A few hot spots wander along the floor over a base warmth.
    Conduction evens out neighboring wax; wax cools toward the liquid's
    temperature (warm low, cool high), slowly in its bulk and faster at its

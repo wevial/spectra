@@ -95,7 +95,7 @@ uniform float uGravity;     // cells/s² per unit temperature off neutral
 uniform float uTension;
 uniform float uDamp;        // 1/s
 uniform float uFloorHold;   // cells from the floor where wax rests on the coil
-uniform float uLiquidLift;  // cells/s²: liquid heated by the bulb rises off the floor
+uniform float uLiquidLift;  // cells/s²: liquid's upward acceleration relative to wax near the bulb
 uniform float uRelease;     // temperature at which wax on the coil lets go
 
 float phi(vec2 uv) { return texture(uState, uv).r; }
@@ -136,8 +136,10 @@ void main() {
   // mass that rises as a fat slug rather than a thin stream.
   float floorHold = s.r * (1.0 - smoothstep(0.0, uFloorHold, vUv.y / uTexel.y)) * (1.0 - smoothstep(uRelease - 0.15, uRelease, s.g / max(s.r, 0.02)));
   if (v.y > 0.0) v.y *= 1.0 - floorHold; // it may still sink into any gap below
-  // Liquid the bulb heats rises off the floor rather than pooling under the wax.
-  v.y += uDt * uLiquidLift * (1.0 - s.r) * (1.0 - smoothstep(0.0, 2.0 * uFloorHold, vUv.y / uTexel.y));
+  // Liquid rises relative to wax, clearing gaps under the pool. L(y)(1 - φ)
+  // equals -L(y)φ plus a height-only pressure gradient. Omit that gradient:
+  // the discrete projection leaves a spurious upflow that can cushion wax.
+  v.y -= uDt * uLiquidLift * s.r * (1.0 - smoothstep(0.0, 2.0 * uFloorHold, vUv.y / uTexel.y));
 
   // The glass: no slip at the walls.
   vec2 edge = min(vUv, 1.0 - vUv) / uTexel;

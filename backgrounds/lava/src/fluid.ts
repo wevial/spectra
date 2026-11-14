@@ -23,7 +23,7 @@ export const P = {
   VISC_LIQUID: 0.03,
   DAMP: 1.5,         // 1/s
   FLOOR_HOLD: 6,     // cells above the floor where cool wax rests on the coil
-  LIQUID_LIFT: 40,   // cells/s²: liquid heated by the bulb rises off the floor
+  LIQUID_LIFT: 40,   // cells/s²: liquid's lift relative to wax near the bulb, applied as wax settling
   RELEASE: 0.6,      // temperature at which wax resting on the coil lets go
   CONDUCT: 0.01,     // per-step smoothing of temperature through the wax
   HEAT: 10,          // 1/s at a hot spot
