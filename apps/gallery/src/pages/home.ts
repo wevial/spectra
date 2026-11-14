@@ -13,10 +13,11 @@ import { mount as wisp } from '@spectra/wisp';
 import { mount as plume } from '@spectra/plume';
 import { mount as caustics } from '@spectra/caustics';
 import { mount as ribbons } from '@spectra/ribbons';
+import { mount as lava } from '@spectra/lava';
 import { renderNav } from '../shell';
 
 renderNav();
-const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, film, haze, wisp, plume, caustics, ribbons } as const;
+const mounts = { glitch, dither, blackhole, lens, mycelium, nebula, aurora, riso, filings, film, haze, wisp, plume, caustics, ribbons, lava } as const;
 for (const card of document.querySelectorAll<HTMLElement>('[data-effect]')) {
   mounts[card.dataset.effect as keyof typeof mounts]?.(card);
 }

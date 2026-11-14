@@ -1,0 +1,11 @@
+{
+  "name": "@spectra/lava",
+  "version": "0.1.0",
+  "description": "A lava lamp simulated as two fluids on the GPU: heated wax rises in plumes that neck and pinch off, cools, drips and sinks back.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*"
+  }
+}

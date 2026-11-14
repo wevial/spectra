@@ -28,6 +28,7 @@ export default defineConfig({
         haze: page('haze/index.html'),
         plume: page('plume/index.html'),
         caustics: page('caustics/index.html'),
+        lava: page('lava/index.html'),
         wisp: page('wisp/index.html'),
         ribbons: page('ribbons/index.html'),
       },
