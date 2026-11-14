@@ -11,6 +11,7 @@
     "@spectra/core": "workspace:*",
     "@spectra/aurora": "workspace:*",
     "@spectra/blackhole": "workspace:*",
+    "@spectra/caustics": "workspace:*",
     "@spectra/dither": "workspace:*",
     "@spectra/film": "workspace:*",
     "@spectra/filings": "workspace:*",

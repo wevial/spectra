@@ -27,6 +27,7 @@ export default defineConfig({
         film: page('film/index.html'),
         haze: page('haze/index.html'),
         plume: page('plume/index.html'),
+        caustics: page('caustics/index.html'),
         wisp: page('wisp/index.html'),
       },
     },

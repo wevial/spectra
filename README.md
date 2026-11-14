@@ -16,6 +16,7 @@ React to the mouse.
 | [`cursors/lens`](cursors/lens) | An invisible mass under the cursor that gravitationally lenses any image, canvas or video |
 | [`cursors/mycelium`](cursors/mycelium) | A Physarum network blooms into branching hyphae; your cursor trail is food it reroutes toward |
 | [`cursors/nebula`](cursors/nebula) | A fluid-sim nebula you part with the mouse; it always heals back |
+| [`backgrounds/caustics`](backgrounds/caustics) | Sunlight through moving water: a web of white-hot lines on black that split into a spectrum at their edges, or on a pool floor |
 | [`cursors/aurora`](cursors/aurora) | Paint the northern lights: your trail becomes a curtain of rising, shimmering rays over a lake |
 | [`cursors/riso`](cursors/riso) | Any image as a risograph print: spot-ink halftones on paper; the cursor knocks the layers out of register |
 | [`cursors/filings`](cursors/filings) | Iron filings swing into field lines around a magnet you carry; click to pin magnets and combine fields |

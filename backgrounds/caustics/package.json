@@ -1,0 +1,12 @@
+{
+  "name": "@spectra/caustics",
+  "version": "0.1.0",
+  "description": "Water caustics: sunlight refracted through moving waves into a web of light, splitting into a spectrum on black or lighting a pool floor.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*",
+    "@spectra/film": "workspace:*"
+  }
+}

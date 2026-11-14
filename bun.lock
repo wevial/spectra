@@ -15,6 +15,7 @@
       "dependencies": {
         "@spectra/aurora": "workspace:*",
         "@spectra/blackhole": "workspace:*",
+        "@spectra/caustics": "workspace:*",
         "@spectra/core": "workspace:*",
         "@spectra/dither": "workspace:*",
         "@spectra/filings": "workspace:*",
@@ -31,6 +32,14 @@
       },
       "devDependencies": {
         "vite": "^7.1.0",
+      },
+    },
+    "backgrounds/caustics": {
+      "name": "@spectra/caustics",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+        "@spectra/film": "workspace:*",
       },
     },
     "backgrounds/haze": {
@@ -324,6 +333,8 @@
     "@spectra/aurora": ["@spectra/aurora@workspace:cursors/aurora"],
 
     "@spectra/blackhole": ["@spectra/blackhole@workspace:cursors/blackhole"],
+
+    "@spectra/caustics": ["@spectra/caustics@workspace:backgrounds/caustics"],
 
     "@spectra/core": ["@spectra/core@workspace:packages/core"],
 

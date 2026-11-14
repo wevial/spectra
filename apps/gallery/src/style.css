@@ -211,6 +211,12 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
     linear-gradient(transparent 30%, #120602 100%),
     #120602;
 }
+.caustics-fallback {
+  background:
+    repeating-radial-gradient(circle at 30% 40%, transparent 0 28px, rgba(255, 196, 140, 0.16) 30px, transparent 33px),
+    repeating-radial-gradient(circle at 70% 65%, transparent 0 22px, rgba(140, 190, 255, 0.14) 24px, transparent 27px),
+    #000;
+}
 .wisp-fallback {
   background:
     radial-gradient(40% 35% at 35% 40%, rgba(155, 59, 26, 0.35), transparent 70%),
