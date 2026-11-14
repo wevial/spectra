@@ -33,7 +33,7 @@ export const DEFAULTS = {
    * edge and swings taller. `fill`: each ribbon gets its own height, tilt
    * and pinch points past the sides, spread over the whole box.
    */
-  placement: 'center' as Placement,
+  placement: 'full' as Placement,
   /** Film grain. */
   grain: 0.015,
   /** Seconds for the grain to morph into a new pattern; 0 freezes it. */

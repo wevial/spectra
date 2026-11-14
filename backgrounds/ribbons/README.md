@@ -8,17 +8,17 @@ background, not a cursor effect: it ignores the pointer.
 ```js
 import { mount } from '@spectra/ribbons';
 
-const ribbons = mount(document.querySelector('header'), { palette: 'silver', placement: 'full' });
+const ribbons = mount(document.querySelector('header'), { palette: 'silver', placement: 'fill' });
 ribbons.config.count = 5; // live tuning, picked up next frame
 ribbons.destroy();
 ```
 
 Palettes: `flare` (default), warm red and orange against cool blue and cyan;
 `spectrum`, hues around the wheel; `silver`, near-white with faint spectral
-edges; `lagoon`; `orchid` (see `PALETTES`). `placement: 'center'` keeps the
-ribbons in a band in the middle of the box; `'full'` runs the band edge to
-edge and swings it taller; `'fill'` gives each ribbon its own lane, tilt and
-pinch points, spread over the whole box.
+edges; `lagoon`; `orchid` (see `PALETTES`). `placement: 'full'` (default)
+runs the band edge to edge and swings it tall; `'center'` keeps it in the
+middle of the box, clear of the edges; `'fill'` gives each ribbon its own
+lane, tilt and pinch points, spread over the whole box.
 See `DEFAULTS` in `src/index.ts` for every option.
 
 ## How it works
