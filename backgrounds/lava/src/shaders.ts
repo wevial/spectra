@@ -60,19 +60,41 @@ void main() {
  * Forces on the velocity: buoyancy (wax lighter than the liquid when warm,
  * heavier when cold), surface tension (continuum surface force: curvature
  * times the edge's slope, pulling wax into rounded shapes and thin necks
- * into drops), viscosity (wax much thicker than the liquid), and the glass.
+ * into drops), and the glass.
  */
+/**
+ * Viscosity: velocity blends toward its neighbors', much more inside wax
+ * than in the liquid. Run several times a step: one pass barely resists
+ * stretching, and thick wax resists it strongly, so it rises in thick
+ * ribbons instead of thinning into threads.
+ */
+export const VISCOSITY = HEAD + /* glsl */ `
+uniform sampler2D uVelocity;
+uniform sampler2D uState;
+uniform float uViscWax;     // per-pass blend toward the neighbors' velocity
+uniform float uViscLiquid;
+void main() {
+  vec2 dx = vec2(uTexel.x, 0.0), dy = vec2(0.0, uTexel.y);
+  vec2 v = texture(uVelocity, vUv).xy;
+  vec2 avg = 0.25 * (texture(uVelocity, vUv + dx).xy + texture(uVelocity, vUv - dx).xy
+                   + texture(uVelocity, vUv + dy).xy + texture(uVelocity, vUv - dy).xy);
+  v = mix(v, avg, mix(uViscLiquid, uViscWax, texture(uState, vUv).r));
+  vec2 edge = min(vUv, 1.0 - vUv) / uTexel;
+  if (min(edge.x, edge.y) < 1.0) v = vec2(0.0);
+  outColor = vec4(v, 0.0, 1.0);
+}
+`;
+
 export const FORCES = HEAD + /* glsl */ `
 uniform sampler2D uVelocity;
 uniform sampler2D uState;
 uniform float uDt;
 uniform float uGravity;     // cells/s² per unit temperature off neutral
 uniform float uTension;
-uniform float uViscWax;     // per-step blend toward the neighbors' velocity
-uniform float uViscLiquid;
 uniform float uDamp;        // 1/s
 uniform float uFloorHold;   // cells from the floor where wax rests on the coil
 uniform float uLiquidLift;  // cells/s²: liquid heated by the bulb rises off the floor
+uniform float uRelease;     // temperature at which wax on the coil lets go
 
 float phi(vec2 uv) { return texture(uState, uv).r; }
 vec2 grad(vec2 uv) {
@@ -90,10 +112,6 @@ void main() {
   vec4 s = texture(uState, vUv);
   vec2 dx = vec2(uTexel.x, 0.0), dy = vec2(0.0, uTexel.y);
 
-  vec2 avg = 0.25 * (texture(uVelocity, vUv + dx).xy + texture(uVelocity, vUv - dx).xy
-                   + texture(uVelocity, vUv + dy).xy + texture(uVelocity, vUv - dy).xy);
-  v = mix(v, avg, mix(uViscLiquid, uViscWax, s.r));
-
   v.y += uDt * uGravity * (s.g - 0.5 * s.r); // φ(T - 0.5)
 
   vec2 g = grad(vUv);
@@ -106,8 +124,9 @@ void main() {
 
   // The coil: wax resting on the floor stays on it, so the pool never lifts
   // off as a sheet with liquid underneath; plumes rise from its top instead.
-  // Only cool, heavy wax rests there; hot wax rises off the coil freely.
-  float floorHold = s.r * (1.0 - smoothstep(0.0, uFloorHold, vUv.y / uTexel.y)) * (1.0 - smoothstep(0.45, 0.6, s.g / max(s.r, 0.02)));
+  // It holds wax until it's hot enough to let go, so heat builds into a
+  // mass that rises as a fat slug rather than a thin stream.
+  float floorHold = s.r * (1.0 - smoothstep(0.0, uFloorHold, vUv.y / uTexel.y)) * (1.0 - smoothstep(uRelease - 0.15, uRelease, s.g / max(s.r, 0.02)));
   if (v.y > 0.0) v.y *= 1.0 - floorHold; // it may still sink into any gap below
   // Liquid the bulb heats rises off the floor rather than pooling under the wax.
   v.y += uDt * uLiquidLift * (1.0 - s.r) * (1.0 - smoothstep(0.0, 2.0 * uFloorHold, vUv.y / uTexel.y));

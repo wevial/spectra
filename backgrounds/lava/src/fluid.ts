@@ -9,7 +9,7 @@
 import { Program, VERTEX, createFBO, createDoubleFBO, makeBlit } from '@spectra/core';
 import type { FBO, DoubleFBO, Blit } from '@spectra/core';
 import {
-  INIT, ADVECT, FORCES, HEAT, SHARPEN_FLUX, SHARPEN, MASS, DIVERGENCE, PRESSURE, SUBTRACT, BLUR, RENDER,
+  INIT, ADVECT, VISCOSITY, FORCES, HEAT, SHARPEN_FLUX, SHARPEN, MASS, DIVERGENCE, PRESSURE, SUBTRACT, BLUR, RENDER,
   MAX_SPOTS, MAX_SEEDS,
 } from './shaders';
 
@@ -17,12 +17,14 @@ import {
 export const P = {
   ROWS: 160,
   GRAVITY: 80,       // cells/s² per unit temperature off neutral
-  TENSION: 280,      // surface tension
-  VISC_WAX: 0.45,    // per-step velocity smoothing inside wax: thick, so blobs hold together
+  TENSION: 700,      // surface tension: strong, so wax rises in thick ribbons and round blobs
+  VISC_WAX: 0.45,    // per-pass velocity smoothing inside wax: thick, so blobs hold together
+  VISC_PASSES: 1,    // smoothing passes per step; more makes the wax resist stretching
   VISC_LIQUID: 0.03,
   DAMP: 1.5,         // 1/s
   FLOOR_HOLD: 6,     // cells above the floor where cool wax rests on the coil
   LIQUID_LIFT: 40,   // cells/s²: liquid heated by the bulb rises off the floor
+  RELEASE: 0.6,      // temperature at which wax resting on the coil lets go
   CONDUCT: 0.01,     // per-step smoothing of temperature through the wax
   HEAT: 10,          // 1/s at a hot spot
   ZONE: 0.06,        // height the bulb warms
@@ -36,7 +38,7 @@ export const P = {
   SHARP_PRESS: 1,    // compression share of the sharpening
   HOLD: 0.4,         // how hard edges grow or shrink to hold the wax's total, per 1/60s
   PRESSURE_ITERS: 30,
-  MAX_DT: 1 / 30,
+  MAX_DT: 1 / 60,    // longer steps shatter thin wax into spray
 };
 
 export interface Spot { x: number; phase: number; speed: number; strength: number }
@@ -73,6 +75,12 @@ export interface Measure {
   maxSpeed: number;
   /** Ten bands from the floor up: the share of the wax in each, and its mean temperature. */
   bands: { wax: number; temp: number }[];
+  /**
+   * How thick the wax is away from the pool and the top: the widths of the
+   * horizontal runs of wax between a quarter and 85% of the height, in box
+   * heights (median, and the thinnest quarter's). 0 when there is none.
+   */
+  ribbon: { median: number; thin: number };
 }
 
 export class LavaFluid {
@@ -99,6 +107,7 @@ export class LavaFluid {
     this.pr = {
       init: new Program(gl, VERTEX, INIT),
       advect: new Program(gl, VERTEX, ADVECT),
+      viscosity: new Program(gl, VERTEX, VISCOSITY),
       forces: new Program(gl, VERTEX, FORCES),
       heat: new Program(gl, VERTEX, HEAT),
       sharpenFlux: new Program(gl, VERTEX, SHARPEN_FLUX),
@@ -216,6 +225,18 @@ export class LavaFluid {
     state.swap();
     velocity.swap();
 
+    p = pr.viscosity;
+    p.use();
+    gl.uniform2f(p.uniforms.uTexel, tx, ty);
+    gl.uniform1i(p.uniforms.uState, state.read.attach(1));
+    gl.uniform1f(p.uniforms.uViscWax, P.VISC_WAX);
+    gl.uniform1f(p.uniforms.uViscLiquid, P.VISC_LIQUID);
+    for (let i = 0; i < P.VISC_PASSES; i++) {
+      gl.uniform1i(p.uniforms.uVelocity, velocity.read.attach(0));
+      blit(velocity.write);
+      velocity.swap();
+    }
+
     p = pr.forces;
     p.use();
     gl.uniform2f(p.uniforms.uTexel, tx, ty);
@@ -224,11 +245,10 @@ export class LavaFluid {
     gl.uniform1i(p.uniforms.uState, state.read.attach(1));
     gl.uniform1f(p.uniforms.uGravity, P.GRAVITY);
     gl.uniform1f(p.uniforms.uTension, P.TENSION);
-    gl.uniform1f(p.uniforms.uViscWax, P.VISC_WAX);
-    gl.uniform1f(p.uniforms.uViscLiquid, P.VISC_LIQUID);
     gl.uniform1f(p.uniforms.uDamp, P.DAMP);
     gl.uniform1f(p.uniforms.uFloorHold, P.FLOOR_HOLD);
     gl.uniform1f(p.uniforms.uLiquidLift, P.LIQUID_LIFT);
+    gl.uniform1f(p.uniforms.uRelease, P.RELEASE);
     blit(velocity.write);
     velocity.swap();
 
@@ -358,7 +378,19 @@ export class LavaFluid {
       if (y < h / 5) bottom += phi; else if (y >= h - h / 5) top += phi;
       maxSpeed = Math.max(maxSpeed, Math.hypot(v[i], v[i + 1]));
     }
-    return { wax: wax / (w * h), bottom: bottom / wax, middle: 1 - (bottom + top) / wax, top: top / wax, temp: temp / wax, floorTemp: floorTemp / Math.max(floor, 1e-6), hottest, maxSpeed: maxSpeed / h,
+    const runs: number[] = [];
+    for (let y = Math.floor(h * 0.25); y < Math.floor(h * 0.85); y++) {
+      let run = 0;
+      for (let x = 0; x <= w; x++) {
+        if (x < w && s[(y * w + x) * 4] > 0.5) run++;
+        else if (run) { runs.push(run / h); run = 0; }
+      }
+    }
+    runs.sort((a, b) => a - b);
+    const ribbon = runs.length
+      ? { median: runs[runs.length >> 1], thin: runs[runs.length >> 2] }
+      : { median: 0, thin: 0 };
+    return { ribbon, wax: wax / (w * h), bottom: bottom / wax, middle: 1 - (bottom + top) / wax, top: top / wax, temp: temp / wax, floorTemp: floorTemp / Math.max(floor, 1e-6), hottest, maxSpeed: maxSpeed / h,
       bands: Array.from(bw, (b, k) => ({ wax: b / wax, temp: b > 0 ? bt[k] / b : 0 })) };
   }
 }

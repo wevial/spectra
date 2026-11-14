@@ -45,6 +45,11 @@ export interface LavaHandle {
   config: LavaConfig;
   /** Read the simulation back from the GPU: where the wax is, how warm, how fast. Slow; for tuning. */
   measure(): Measure | null;
+  /**
+   * Run the lamp forward by `seconds` and draw it, without waiting for
+   * animation frames, so it works in a hidden tab. For tests and tuning.
+   */
+  advance(seconds: number): void;
   destroy(): void;
 }
 
@@ -67,7 +72,7 @@ export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): L
   const stage = createStage(container, { floatTargets: true, onResize: () => { drawn = ''; } });
   if (!stage) {
     container.classList.add('lava-fallback');
-    return { config, measure: () => null, destroy() {} };
+    return { config, measure: () => null, advance() {}, destroy() {} };
   }
   const { gl, canvas, reducedMotion } = stage;
   const fluid = new LavaFluid(gl);
@@ -100,6 +105,10 @@ export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): L
       if (config.grainPeriod > 0) grainClock += rawDtMs / 1000 / config.grainPeriod;
     }
 
+    draw();
+  }
+
+  function draw() {
     const rainbow = config.palette === 'rainbow';
     const colors = rainbow
       ? [RAINBOW_LIQUID, RAINBOW_LIQUID, RAINBOW_LIQUID]
@@ -116,6 +125,12 @@ export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): L
   return {
     config,
     measure: () => fluid.measure(),
+    advance(seconds) {
+      if (layout() !== filled || fluid.needsFill(aspect())) refill();
+      fluid.advance(seconds, config.heat);
+      reveal = 1;
+      draw();
+    },
     destroy() {
       stage.destroy(); // losing the context frees every GL object with it
     },
