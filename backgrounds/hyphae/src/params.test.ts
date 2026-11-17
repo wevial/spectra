@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { patches, seedClusters, gaussianTaps, hexToLinear, MAX_PATCHES, MAX_TAPS } from './params';
+import { patches, seedClusters, gaussianTaps, hexToLinear, prismBands, MAX_PATCHES, MAX_TAPS, PRISM_BANDS } from './params';
 
 describe('patches', () => {
   test('positions wrap into uv and strengths stay 0..1', () => {
@@ -72,4 +72,18 @@ test('hexToLinear', () => {
   expect(hexToLinear('#ffffff')).toEqual([1, 1, 1]);
   expect(hexToLinear('#000000')).toEqual([0, 0, 0]);
   expect(hexToLinear('#808080')[0]).toBeCloseTo(0.2159, 3);
+});
+
+test('prismBands runs red to violet and every channel gets light', () => {
+  const b = prismBands();
+  expect(b.length).toBe(PRISM_BANDS * 3);
+  const sum = [0, 0, 0];
+  for (let i = 0; i < PRISM_BANDS; i++) for (let c = 0; c < 3; c++) {
+    expect(b[i * 3 + c]).toBeGreaterThanOrEqual(0);
+    sum[c] += b[i * 3 + c];
+  }
+  for (const v of sum) expect(v).toBeGreaterThan(0.5);
+  expect(b[0]).toBeGreaterThan(b[2]); // first band warm
+  const last = (PRISM_BANDS - 1) * 3;
+  expect(b[last + 2]).toBeGreaterThan(b[last]); // last band cool
 });

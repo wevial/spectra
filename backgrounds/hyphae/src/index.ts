@@ -8,7 +8,7 @@ import { Program, VERTEX, makeBlit, createStage, createFBO, createDoubleFBO, set
 import type { FBO, DoubleFBO } from '@spectra/core';
 import { AGENT_STEP, DEPOSIT_VERT, DIFFUSE } from '@spectra/mycelium';
 import { AGENT_INIT, FOOD, SPORE, DEPOSIT_FRAG, SEED, BLUR, COMPOSITE } from './shaders';
-import { PALETTES, patches, seedClusters, gaussianTaps, hexToLinear } from './params';
+import { PALETTES, patches, seedClusters, gaussianTaps, hexToLinear, prismBands } from './params';
 import type { PaletteName } from './params';
 
 export { PALETTES } from './params';
@@ -78,7 +78,7 @@ const REVEAL_MS = 1500;
 const SPORE_EVERY = 0.25;
 const HALO_SIGMA = 2;
 /** How far `prism` splits red from blue, field cells either way. */
-const PRISM_SPLIT = 2.4;
+const PRISM_SPLIT = 8;
 const WIDE_SIGMA = 4;
 
 /**
@@ -108,6 +108,7 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
   const composite = new Program(gl, VERTEX, COMPOSITE);
   const haloTaps = gaussianTaps(HALO_SIGMA);
   const wideTaps = gaussianTaps(WIDE_SIGMA);
+  const bands = prismBands();
   const copyTaps = { count: 1, offsets: new Float32Array(8), weights: new Float32Array([1, 0, 0, 0, 0, 0, 0, 0]) };
 
   const points = gl.createVertexArray();
@@ -339,6 +340,7 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
     // Prism: the split turns slowly, so strands at every angle get their turn to fan out.
     const ang = 0.7 + time * 0.012;
     gl.uniform1f(u.uPrism, config.palette === 'prism' ? 1 : 0);
+    gl.uniform3fv(u['uBand[0]'], bands);
     gl.uniform2f(u.uSplit, Math.cos(ang) * PRISM_SPLIT / field!.width, Math.sin(ang) * PRISM_SPLIT / field!.height);
     setGrain(gl, u, config.grain, grainClock);
     blit(null);
