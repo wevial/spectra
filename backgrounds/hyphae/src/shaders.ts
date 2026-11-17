@@ -180,6 +180,8 @@ uniform sampler2D uWide;
 uniform float uGlow;
 uniform float uBright;
 uniform vec3 uGround;
+uniform float uPrism;
+uniform vec2 uSplit;  // dispersion, uv: red one way, blue the other
 out vec4 fragColor;
 ${NOISE}
 ${COLOR}
@@ -194,12 +196,41 @@ vec3 shoulder(vec3 c) {
   return mix(c, k + (1.0 - k) * (1.0 - exp(-(c - k) / (1.0 - k))), step(k, c));
 }
 
+// Prism: silver light split into a spectrum. Seven taps along the split,
+// each weighted by its band's color, so a strand's edges fan from red on
+// one side to blue on the other while its body stays silver.
+vec3 prism(vec2 uv) {
+  vec3 hz = vec3(0.0), st = vec3(0.0), co = vec3(0.0), ws = vec3(0.0);
+  for (int i = 0; i < 7; i++) {
+    float t = float(i) / 6.0;
+    vec3 band = max(vec3(1.0 - abs(t - 0.15) * 3.0, 1.0 - abs(t - 0.5) * 3.0, 1.0 - abs(t - 0.85) * 3.0), 0.0);
+    vec3 w = weights(uv + uSplit * (t - 0.5) * 2.0);
+    hz += band * w.x;
+    st += band * w.y;
+    co += band * w.z;
+    ws += band;
+  }
+  float food = clamp(texture(uFood, uv).z, 0.0, 1.0);
+  vec3 c = (uHaze * hz + uHypha * st * (0.4 + 0.8 * food) + uTip * co * food) / ws;
+  float grey = dot(c, vec3(0.3333));
+  return max(grey + (c - grey) * 2.2, 0.0); // let the split read as color
+}
+
 void main() {
   // A touch of extra filtering: half-cell taps soften the strands' pixel noise.
-  vec3 net = shade4(vUv, uCell * 0.5);
+  vec3 net = uPrism > 0.5 ? prism(vUv) : shade4(vUv, uCell * 0.5);
   vec3 col = uGround * (0.75 + 0.5 * texture(uFood, vUv).w);
   col += net * uBright;
-  col += (texture(uHalo, vUv).rgb * 0.3 + texture(uWide, vUv).rgb * 0.35) * uGlow * uBright;
+  vec3 bloom;
+  if (uPrism > 0.5) {
+    // The glow disperses too, wider than the strands.
+    vec2 o = uSplit * 2.5;
+    bloom = vec3(texture(uHalo, vUv - o).r, texture(uHalo, vUv).g, texture(uHalo, vUv + o).b) * 0.3
+          + vec3(texture(uWide, vUv - o * 2.0).r, texture(uWide, vUv).g, texture(uWide, vUv + o * 2.0).b) * 0.35;
+  } else {
+    bloom = texture(uHalo, vUv).rgb * 0.3 + texture(uWide, vUv).rgb * 0.35;
+  }
+  col += bloom * uGlow * uBright;
   vec2 c = vUv - 0.5;
   col *= 1.0 - dot(c, c) * 0.5;
   fragColor = filmGrain(shoulder(col));

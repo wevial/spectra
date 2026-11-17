@@ -77,6 +77,8 @@ const REVEAL_MS = 1500;
 /** Seconds of spores to batch into one pass. */
 const SPORE_EVERY = 0.25;
 const HALO_SIGMA = 2;
+/** How far `prism` splits red from blue, field cells either way. */
+const PRISM_SPLIT = 2.4;
 const WIDE_SIGMA = 4;
 
 /**
@@ -334,6 +336,10 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
     gl.uniform1f(u.uGlow, config.glow);
     gl.uniform1f(u.uBright, 1 - Math.pow(1 - reveal, 3));
     gl.uniform3fv(u.uGround, colors[0]);
+    // Prism: the split turns slowly, so strands at every angle get their turn to fan out.
+    const ang = 0.7 + time * 0.012;
+    gl.uniform1f(u.uPrism, config.palette === 'prism' ? 1 : 0);
+    gl.uniform2f(u.uSplit, Math.cos(ang) * PRISM_SPLIT / field!.width, Math.sin(ang) * PRISM_SPLIT / field!.height);
     setGrain(gl, u, config.grain, grainClock);
     blit(null);
   }

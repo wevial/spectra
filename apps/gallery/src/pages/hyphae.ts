@@ -1,8 +1,12 @@
 import { mount, PALETTES } from '@spectra/hyphae';
+import type { PaletteName } from '@spectra/hyphae';
 import { renderNav, panel } from '../shell';
 
 renderNav();
-const fx = mount(document.getElementById('stage')!);
+// ?palette=<name> picks a palette, so each has its own link.
+const palette = new URLSearchParams(location.search).get('palette');
+const fx = mount(document.getElementById('stage')!,
+  palette !== null && palette in PALETTES ? { palette: palette as PaletteName } : {});
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;

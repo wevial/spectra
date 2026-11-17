@@ -1,13 +1,18 @@
 // Pure parameter math for the hyphae background, kept out of the GL code so
 // it can be tested.
 
-/** Four colors: ground, haze (faint exploration), hyphae, hot feeding tips. `spectral` hues the hyphae by place. */
+/**
+ * Four colors: ground, haze (faint exploration), hyphae, hot feeding tips.
+ * `spectral` hues the hyphae by place; `prism` keeps them silver and splits
+ * their edges into a spectrum.
+ */
 export const PALETTES = {
   foxfire: ['#030605', '#0f3a30', '#7ff2c4', '#eafff4'],
   ember: ['#070302', '#4a1606', '#ff9a52', '#fff0d8'],
   spore: ['#05030a', '#2c1452', '#c3a0ff', '#ffe0f6'],
   frost: ['#030407', '#16243c', '#b2c9ff', '#ffffff'],
   spectral: ['#040406', '#20202a', '#ffffff', '#ffffff'],
+  prism: ['#040406', '#262830', '#d4d8e2', '#ffffff'],
 } satisfies Record<string, [string, string, string, string]>;
 
 export type PaletteName = keyof typeof PALETTES;
