@@ -356,7 +356,7 @@ export class LavaFluid {
   }
 
   /** Draw the lamp to the screen. */
-  render(colors: { liquid: number[]; deep: number[]; hot: number[] }, glow: number, reveal: number, rainbow: boolean, setGrain: (u: Record<string, WebGLUniformLocation | null>) => void) {
+  render(colors: { liquid: number[]; deep: number[]; hot: number[] }, glow: number, reveal: number, mode: 0 | 1 | 2, setGrain: (u: Record<string, WebGLUniformLocation | null>) => void) {
     const { gl, pr, body, blit } = this;
     let p: Program;
     if (this.bodyDirty) {
@@ -384,7 +384,7 @@ export class LavaFluid {
     gl.uniform3fv(p.uniforms.uHot, colors.hot);
     gl.uniform1f(p.uniforms.uGlow, glow);
     gl.uniform1f(p.uniforms.uReveal, reveal);
-    gl.uniform1f(p.uniforms.uRainbow, rainbow ? 1 : 0);
+    gl.uniform1f(p.uniforms.uMode, mode);
     gl.uniform1f(p.uniforms.uHue, this.time * 0.05);
     setGrain(p.uniforms);
     blit(null);

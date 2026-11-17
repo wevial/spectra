@@ -10,15 +10,16 @@ ignores the pointer.
 ```js
 import { mount } from '@spectra/lava';
 
-const lava = mount(document.querySelector('header'), { palette: 'lilac' });
+const lava = mount(document.querySelector('header'), { palette: 'thermal' });
 lava.config.heat = 1.5; // live tuning, picked up next frame
 lava.measure();         // where the wax is, how warm, how fast (reads the GPU back; slow)
 lava.destroy();
 ```
 
-Palettes: `magma` (default), `lilac`, `acid`, `ocean`, `rose` (see
-`PALETTES`), and `rainbow`, where wax carries a hue that blends where it
-mixes. `amount` sets how much wax the lamp holds, `heat` how hard the bulb
+Palettes: `rainbow` (default), where wax carries a hue that blends where it
+mixes; `thermal`, where wax is colored by its temperature, gold on the bulb
+cooling through red to indigo at the top; and `magma`, `lilac`, `acid`,
+`ocean`, `rose` (see `PALETTES`). `amount` sets how much wax the lamp holds, `heat` how hard the bulb
 heats it, `speed` how fast it all runs. See `DEFAULTS` in `src/index.ts` for
 every option, and `P` in `src/fluid.ts` for the physics constants.
 

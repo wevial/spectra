@@ -15,13 +15,16 @@ export const PALETTES = {
   rose: ['#0d0408', '#c2185b', '#ffb49c'],
 } satisfies Record<string, [string, string, string]>;
 
-/** Liquid for the `rainbow` palette, where wax carries a hue that blends as it mixes. */
+/**
+ * Liquid for the `rainbow` palette, where wax carries a hue that blends as it
+ * mixes, and the `thermal` one, where wax is colored by its temperature.
+ */
 export const RAINBOW_LIQUID = '#08060d';
 
-export type PaletteName = keyof typeof PALETTES | 'rainbow';
+export type PaletteName = keyof typeof PALETTES | 'rainbow' | 'thermal';
 
 export const DEFAULTS = {
-  palette: 'magma' as PaletteName,
+  palette: 'rainbow' as PaletteName,
   /** Wax in the lamp, as a fraction of the box. Changing it refills the lamp. */
   amount: 0.15,
   /** How hard the bulb heats the wax. */
@@ -113,16 +116,16 @@ export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): L
   const grain = (u: Record<string, WebGLUniformLocation | null>) => setGrain(gl, u, config.grain, grainClock);
 
   function draw() {
-    const rainbow = config.palette === 'rainbow';
+    const mode = config.palette === 'rainbow' ? 1 : config.palette === 'thermal' ? 2 : 0;
     if (!colors || palette !== config.palette) {
       palette = config.palette;
-      const hex = rainbow
+      const hex = mode
         ? [RAINBOW_LIQUID, RAINBOW_LIQUID, RAINBOW_LIQUID]
         : PALETTES[config.palette as keyof typeof PALETTES] ?? PALETTES.magma;
       const [liquid, deep, hot] = hex.map(hexToRgb);
       colors = { liquid, deep, hot };
     }
-    fluid.render(colors, config.glow, 1 - Math.pow(1 - reveal, 3), rainbow, grain);
+    fluid.render(colors, config.glow, 1 - Math.pow(1 - reveal, 3), mode, grain);
   }
 
   // Draw right away so the canvas never flashes black before the first frame.

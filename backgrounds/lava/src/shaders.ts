@@ -340,7 +340,7 @@ uniform vec3 uDeep;
 uniform vec3 uHot;
 uniform float uGlow;
 uniform float uReveal;
-uniform float uRainbow;
+uniform float uMode;         // 0 palette, 1 rainbow, 2 thermal
 uniform float uHue;
 ${NOISE}
 ${COLOR}
@@ -366,6 +366,20 @@ vec4 bicubic(sampler2D tex, vec2 uv) {
 
 const float TH = 0.5;
 
+// Thermal ramp, Oklab: cold indigo through magenta and red to hot gold.
+vec3 thermal(float t) {
+  const vec3 C0 = vec3(0.28, 0.060, -0.160);  // indigo
+  const vec3 C1 = vec3(0.45, 0.170, -0.120);  // violet-magenta
+  const vec3 C2 = vec3(0.58, 0.200, 0.080);   // red
+  const vec3 C3 = vec3(0.74, 0.090, 0.140);   // orange
+  const vec3 C4 = vec3(0.90, 0.010, 0.150);   // gold
+  t = clamp(t, 0.0, 1.0) * 4.0;
+  if (t < 1.0) return mix(C0, C1, t);
+  if (t < 2.0) return mix(C1, C2, t - 1.0);
+  if (t < 3.0) return mix(C2, C3, t - 2.0);
+  return mix(C3, C4, t - 3.0);
+}
+
 void main() {
   vec4 s = bicubic(uState, vUv);
   float f = s.r;
@@ -374,7 +388,17 @@ void main() {
   vec3 deep = toOklab(toLinear(uDeep));
   vec3 hot = toOklab(toLinear(uHot));
   vec3 glowDeep = deep, glowHot = hot;
-  if (uRainbow > 0.5) {
+  if (uMode > 1.5) {
+    // Color is temperature: deep takes the wax's own, the lit edge a step hotter.
+    float t = (warm - 0.05) / 0.95;
+    deep = thermal(t) * vec3(0.8, 1.0, 1.0);
+    hot = thermal(t + 0.2);
+    glowDeep = thermal(0.6) * vec3(0.8, 1.0, 1.0);
+    glowHot = thermal(0.85);
+    float w = smoothstep(0.1, 0.6, f);
+    glowDeep = mix(glowDeep, deep, w);
+    glowHot = mix(glowHot, hot, w);
+  } else if (uMode > 0.5) {
     // Wax carries its own hue; the liquid's glow takes a smooth sweep, since
     // the hue left in open liquid is only noise.
     float h = (dot(s.ba, s.ba) > 1e-4 ? atan(s.a, s.b) : 0.0) + uHue;

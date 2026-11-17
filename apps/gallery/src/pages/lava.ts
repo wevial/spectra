@@ -10,7 +10,7 @@ const c = fx.config;
 
 panel((gui) => {
   const lamp = gui.addFolder('lamp');
-  lamp.add(c, 'palette', [...Object.keys(PALETTES), 'rainbow']);
+  lamp.add(c, 'palette', ['rainbow', 'thermal', ...Object.keys(PALETTES)]);
   lamp.add(c, 'amount', 0.05, 0.35, 0.01).name('wax');
   lamp.add(c, 'heat', 0, 3, 0.05);
   lamp.add(c, 'speed', 0, 5, 0.05);
