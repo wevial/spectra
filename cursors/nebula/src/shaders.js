@@ -1,3 +1,5 @@
+import { COLOR, GRAIN } from '@spectra/core';
+
 // All GLSL lives here as template literals so the app runs without a bundler or fetch.
 
 export const VERTEX = /* glsl */ `#version 300 es
@@ -247,6 +249,11 @@ void main() {
 // pigment instead of glowing, like paint.
 export const COMPOSITE = /* glsl */ `#version 300 es
 precision highp float;
+#define GLOW_GAIN 1.9
+#define GLOW_CURVE 2.2
+#define GLOW_BURN_LO 0.7
+#define GLOW_BURN_HI 1.5
+#define GLOW_WHITE 0.9
 in vec2 vUv;
 out vec4 outColor;
 uniform sampler2D uDye;
@@ -255,7 +262,10 @@ uniform float uAspect;
 uniform float uPaint;   // 1: paint look
 uniform vec3 uGround;   // paint look's ground color
 uniform vec3 uInk[4];   // paint look's inks: fringe, middle, core, hot core
+uniform float uGlow;    // 1: glow look
 ${NOISE_GLSL}
+${COLOR}
+${GRAIN}
 
 // Deep-space vertical gradient: near-black violet up top, a touch warmer low.
 const vec3 SKY_TOP = vec3(0.012, 0.004, 0.055);
@@ -320,7 +330,28 @@ vec3 paint(vec4 dye) {
   return col * (1.0 - dye.a * 0.35);
 }
 
+// Glow: the same inks, but emitted as light over a dark ground. Dense gas
+// burns toward white, dust lanes absorb, and film grain sits on top.
+vec3 glow(vec4 dye) {
+  float m = max(max(dye.r, dye.g), dye.b);
+  vec3 n = dye.rgb / max(m, 1e-4);
+  float toMid = smoothstep(0.25, 0.57, n.r);
+  float toCore = smoothstep(0.6, 1.0, n.r);
+  float hot = smoothstep(0.45, 0.75, n.g) * toCore;
+  vec3 ink = mix(mix(uInk[0], uInk[1], toMid), uInk[2], toCore);
+  ink = toLinear(mix(ink, uInk[3], hot));
+  vec3 light = ink * pow(m, GLOW_CURVE) * GLOW_GAIN;
+  float burn = smoothstep(GLOW_BURN_LO, GLOW_BURN_HI, m);
+  light += burn * burn * GLOW_WHITE;
+  light *= 1.0 - dye.a * 0.6;
+  return toLinear(uGround) + 1.0 - exp(-light);
+}
+
 void main() {
+  if (uGlow > 0.5) {
+    outColor = filmGrain(glow(texture(uDye, vUv)));
+    return;
+  }
   if (uPaint > 0.5) {
     vec3 col = paint(texture(uDye, vUv));
     outColor = vec4(col + (hash12(gl_FragCoord.xy + fract(uTime) * 61.7) - 0.5) / 255.0 * 2.0, 1.0);

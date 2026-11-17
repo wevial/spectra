@@ -17,7 +17,7 @@ Palettes (see `PAINTS`), each four inks over its own ground:
 
 | Name | Inks | Ground |
 |---|---|---|
-| `spectrum` (default) | violet, teal, gold, pink | near-black |
+| `spectrum` (default, glows) | violet, teal, gold, pink | near-black |
 | `nebula` | blue, violet, pink | cream |
 | `marbling` | indigo, ochre, oxblood | parchment |
 | `riso` | blue, fluoro pink, yellow | off-white |
@@ -39,7 +39,10 @@ The paint look skips the nebula's stars and night sky. Each pixel reads the
 gas's hue back from its color (blue fringe, violet middle, pink core, or a
 hot core) and takes the palette's ink for it, blending between neighbors. The
 gas's density is the ink's coverage over the ground, and the dust lanes
-darken it a little, so it reads as paint rather than glowing gas.
+darken it a little, so it reads as paint rather than glowing gas. A paint
+with `glow` (the default `spectrum`) turns that around: its inks are emitted
+as light over a dark ground, dense gas burns toward white, dust lanes absorb,
+and film grain sits on top, like the other backgrounds.
 
 Where the cursor would write into the fluid sim, three wanderers (the
 brushes) do instead: each follows its own slow Lissajous path and drags the

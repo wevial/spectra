@@ -5,7 +5,7 @@
 // With `cursor: false` it's a background: the pointer is ignored, and a few
 // invisible wanderers push slow currents through the same sim instead.
 
-import { Program, makeBlit, createStage } from '@spectra/core';
+import { Program, makeBlit, createStage, setGrain } from '@spectra/core';
 import { VERTEX, COMPOSITE } from './shaders.js';
 import { FluidSim, CONFIG } from './fluid.js';
 import { Governor, TIERS } from './perf.js';
@@ -127,8 +127,11 @@ export function mount(container, opts = {}) {
     gl.uniform1i(composite.uniforms.uDye, fluid.cloud.attach(0));
     gl.uniform1f(composite.uniforms.uTime, time);
     gl.uniform1f(composite.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
-    gl.uniform1f(composite.uniforms.uPaint, fluid.config.look === 'paint' ? 1 : 0);
+    const painted = fluid.config.look === 'paint';
     const paint = PAINTS[fluid.config.paint] ?? PAINTS.nebula;
+    gl.uniform1f(composite.uniforms.uPaint, painted ? 1 : 0);
+    gl.uniform1f(composite.uniforms.uGlow, painted && paint.glow ? 1 : 0);
+    if (painted && paint.glow) setGrain(gl, composite.uniforms, 0.04, time / 2.5);
     if (fluid.config.paint !== paintName) {
       paintName = fluid.config.paint;
       fluid.config.ground = paint.ground;

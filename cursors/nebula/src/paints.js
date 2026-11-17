@@ -1,10 +1,11 @@
 // Palettes for the paint look. The gas has three hues (blue fringes, purple
 // middles, pink cores) plus hot white-pink at its densest; the paint look
-// swaps each for an ink, in that order, over a ground.
+// swaps each for an ink, in that order, over a ground. A paint with `glow`
+// emits its inks as light over a dark ground instead of laying them down.
 
-/** @type {Record<string, { inks: [string, string, string, string], ground: string }>} */
+/** @type {Record<string, { inks: [string, string, string, string], ground: string, glow?: boolean }>} */
 export const PAINTS = {
-  spectrum: { inks: ['#6b6bff', '#3fe0c8', '#ffcf5a', '#ff9ad0'], ground: '#07060a' },
+  spectrum: { inks: ['#6b6bff', '#3fe0c8', '#ffcf5a', '#ff9ad0'], ground: '#07060a', glow: true },
   nebula: { inks: ['#398ce6', '#7c4ddb', '#e65aa8', '#e6a9cf'], ground: '#efe8dc' },
   marbling: { inks: ['#1f3a6b', '#c98a2b', '#8c2f2a', '#e3cf9f'], ground: '#f1e9d6' },
   riso: { inks: ['#0078bf', '#ff48b0', '#ffd400', '#ff6c2f'], ground: '#f7f4ee' },
