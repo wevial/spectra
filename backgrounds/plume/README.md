@@ -17,9 +17,9 @@ Palettes (see `PAINTS`), each four inks over its own ground:
 
 | Name | Inks | Ground |
 |---|---|---|
-| `spectrum` (default, glows) | violet, teal, gold, pink | near-black |
+| `rainbow` (default, glows) | a slow rainbow drifting across | near-black |
+| `spectrum` (glows) | violet, teal, gold, pink | near-black |
 | `prism` (glows) | silver, a spectrum at the edges | near-black |
-| `rainbow` (glows) | a slow rainbow drifting across | near-black |
 | `nebula` | blue, violet, pink | cream |
 | `marbling` | indigo, ochre, oxblood | parchment |
 | `riso` | blue, fluoro pink, yellow | off-white |

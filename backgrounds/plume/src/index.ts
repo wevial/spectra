@@ -12,7 +12,7 @@ export type { NebulaConfig };
 export { PAINTS };
 
 export interface PlumeOptions {
-  /** Palette, a key of PAINTS. Default `spectrum`. */
+  /** Palette, a key of PAINTS. Default `rainbow`. */
   paint?: keyof typeof PAINTS;
   /** Strength of the ambient currents; 0 leaves only the drift. */
   currents?: number;
@@ -33,5 +33,5 @@ export interface PlumeOptions {
  * `nebula-fallback` class instead.
  */
 export function mount(container: HTMLElement, opts: PlumeOptions = {}) {
-  return mountNebula(container, { ...opts, paint: opts.paint ?? 'spectrum', cursor: false, look: 'paint' });
+  return mountNebula(container, { ...opts, paint: opts.paint ?? 'rainbow', cursor: false, look: 'paint' });
 }
