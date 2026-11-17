@@ -17,7 +17,8 @@ Palettes (see `PAINTS`), each four inks over its own ground:
 
 | Name | Inks | Ground |
 |---|---|---|
-| `nebula` (default) | blue, violet, pink | cream |
+| `spectrum` (default) | violet, teal, gold, pink | near-black |
+| `nebula` | blue, violet, pink | cream |
 | `marbling` | indigo, ochre, oxblood | parchment |
 | `riso` | blue, fluoro pink, yellow | off-white |
 | `ink` | near-black, slate | paper |

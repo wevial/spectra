@@ -4,6 +4,7 @@
 
 /** @type {Record<string, { inks: [string, string, string, string], ground: string }>} */
 export const PAINTS = {
+  spectrum: { inks: ['#6b6bff', '#3fe0c8', '#ffcf5a', '#ff9ad0'], ground: '#07060a' },
   nebula: { inks: ['#398ce6', '#7c4ddb', '#e65aa8', '#e6a9cf'], ground: '#efe8dc' },
   marbling: { inks: ['#1f3a6b', '#c98a2b', '#8c2f2a', '#e3cf9f'], ground: '#f1e9d6' },
   riso: { inks: ['#0078bf', '#ff48b0', '#ffd400', '#ff6c2f'], ground: '#f7f4ee' },
