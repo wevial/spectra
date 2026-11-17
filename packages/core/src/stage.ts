@@ -193,8 +193,19 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   });
   io.observe(canvas);
 
+  // Resizing the canvas clears its drawing buffer, and ResizeObserver runs
+  // after this frame's rAF draw but before paint, so without a redraw here
+  // every resize step paints one blank frame: a black flash while dragging.
+  // A zero-length frame redraws in place; pointer deltas it consumes are
+  // cleared so the next tick doesn't apply them twice.
   const ro = new ResizeObserver(() => {
-    if (stage.resize()) opts.onResize?.();
+    if (!stage.resize()) return;
+    opts.onResize?.();
+    if (frameFn && visible && onScreen) {
+      frameFn(0, 0);
+      pointer.dx = 0;
+      pointer.dy = 0;
+    }
   });
   ro.observe(canvas);
 
