@@ -22,6 +22,7 @@
         "@spectra/film": "workspace:*",
         "@spectra/glitch": "workspace:*",
         "@spectra/haze": "workspace:*",
+        "@spectra/hyphae": "workspace:*",
         "@spectra/lava": "workspace:*",
         "@spectra/lens": "workspace:*",
         "@spectra/mycelium": "workspace:*",
@@ -49,6 +50,14 @@
       "version": "0.1.0",
       "dependencies": {
         "@spectra/core": "workspace:*",
+      },
+    },
+    "backgrounds/hyphae": {
+      "name": "@spectra/hyphae",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectra/core": "workspace:*",
+        "@spectra/mycelium": "workspace:*",
       },
     },
     "backgrounds/lava": {
@@ -365,6 +374,8 @@
     "@spectra/glitch": ["@spectra/glitch@workspace:cursors/glitch"],
 
     "@spectra/haze": ["@spectra/haze@workspace:backgrounds/haze"],
+
+    "@spectra/hyphae": ["@spectra/hyphae@workspace:backgrounds/hyphae"],
 
     "@spectra/lava": ["@spectra/lava@workspace:backgrounds/lava"],
 

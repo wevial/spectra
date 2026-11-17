@@ -31,6 +31,7 @@ export default defineConfig({
         lava: page('lava/index.html'),
         wisp: page('wisp/index.html'),
         ribbons: page('ribbons/index.html'),
+        hyphae: page('hyphae/index.html'),
       },
     },
   },

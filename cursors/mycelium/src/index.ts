@@ -7,6 +7,9 @@ import { Program, VERTEX, Trail, makeBlit, createStage, createFBO, createDoubleF
 import type { DoubleFBO } from '@spectra/core';
 import { AGENT_INIT, AGENT_STEP, DEPOSIT_VERT, DEPOSIT_FRAG, DIFFUSE, RENDER } from './shaders';
 
+/** The sim's passes, for effects that grow their own network (e.g. the hyphae background). */
+export { AGENT_STEP, DEPOSIT_VERT, DIFFUSE } from './shaders';
+
 /** Four colors: ground, haze (faint exploration), hyphae, glowing hubs. */
 export const PALETTES = {
   forest: ['#0d0a07', '#3a3022', '#ece2c9', '#b4ffc8'],

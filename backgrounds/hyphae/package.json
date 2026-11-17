@@ -1,0 +1,12 @@
+{
+  "name": "@spectra/hyphae",
+  "version": "0.1.0",
+  "description": "A glowing fungal network on near-black that grows toward drifting, invisible food, fuses, thins and retreats on its own.",
+  "type": "module",
+  "license": "MIT",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@spectra/core": "workspace:*",
+    "@spectra/mycelium": "workspace:*"
+  }
+}

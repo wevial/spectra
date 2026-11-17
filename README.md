@@ -33,6 +33,7 @@ No cursor.
 | [`backgrounds/plume`](backgrounds/plume) | The nebula's gas as wet paint in eight palettes: invisible brushes pull lanes through it on their own, and it always heals back |
 | [`backgrounds/ribbons`](backgrounds/ribbons) | Translucent ribbons of colored light ripple across black, pinched at both ends, crossing and adding up to white where they overlap |
 | [`backgrounds/lava`](backgrounds/lava) | A lava lamp simulated as two fluids: heated wax rises in plumes that neck and pinch off, rounds into blobs, cools, drips and sinks back |
+| [`backgrounds/hyphae`](backgrounds/hyphae) | The mycelium network on its own: a glowing fungal web on near-black grows toward drifting, invisible food, fuses, thins and retreats |
 
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
 is live: change a field and the next frame uses it.
