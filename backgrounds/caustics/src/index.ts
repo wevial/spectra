@@ -8,7 +8,7 @@
 import { Program, VERTEX, makeBlit, createStage, createFBO, setGrain } from '@spectra/core';
 import type { FBO } from '@spectra/core';
 import { wavelengthToRgb } from '@spectra/film';
-import { LIGHT_VS, LIGHT_FS, BLUR, DOWNSAMPLE, COMPOSITE, WAVES, MAX_TAPS } from './shaders';
+import { LIGHT_VS, LIGHT_FS, BLUR, DOWNSAMPLE, MOTTLE, COMPOSITE, WAVES, MAX_TAPS } from './shaders';
 
 /**
  * Two colors: the floor in shade, and the sunlight. `rainbow` and `prism`
@@ -105,9 +105,10 @@ const GLOW_BLUR = 2.5;
 /** Wave gravity in units/s², tuned so a mid wave travels at a calm drift. */
 const GRAVITY = 0.09;
 
-function hexToRgb(hex: string): [number, number, number] {
+function hexToLinear(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]
+    .map((c) => c < 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)) as [number, number, number];
 }
 
 function hash(n: number) {
@@ -131,7 +132,7 @@ function ior(nm: number, dispersion: number) {
   return 1.333 + dispersion * 3059 * (1 / (nm * nm) - 1 / (589 * 589));
 }
 
-interface Wave { kx: number; ky: number; amp: number; omega: number; phase: number }
+interface Wave { kx: number; ky: number; amp: number; omega: number; phase: number; spread: number }
 
 /**
  * Travelling waves spread over every direction by the golden angle, with
@@ -155,6 +156,7 @@ function makeWaves(seed: number, scale: number, choppiness: number): Wave[] {
       amp: (0.055 * Math.sqrt(length / 0.11) * choppiness) / k,
       omega: Math.sqrt(GRAVITY * k),
       phase: hash(seed * 7 + i + 0.25) * TAU,
+      spread: 0.4 + 1.2 * hash(i + 11.5),
     });
   }
   return out;
@@ -200,23 +202,46 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
   const { gl, canvas, reducedMotion } = stage;
   const blit = makeBlit(gl);
   const lightProgram = new Program(gl, LIGHT_VS, LIGHT_FS);
-  const blur = new Program(gl, VERTEX, BLUR);
+  // Separate programs retain each blur's taps between frames.
+  const sunBlur = new Program(gl, VERTEX, BLUR);
+  const glowBlur = new Program(gl, VERTEX, BLUR);
   const downsample = new Program(gl, VERTEX, DOWNSAMPLE);
+  const mottleProgram = new Program(gl, VERTEX, MOTTLE);
   const composite = new Program(gl, VERTEX, COMPOSITE);
-  const glowTaps = gaussianTaps(GLOW_BLUR);
-  let sunTaps = gaussianTaps(SUN_BLUR);
-  const weights = spectrumWeights();
+  const lightUniforms = lightProgram.uniforms;
+  const waveUniform = lightUniforms['uWave[0]'];
+  const weights = new Float32Array(spectrumWeights().flat());
+  const layerColors = new Float32Array(12 * 3);
+  const etas = new Float32Array(SPECTRUM.length);
+
+  function setBlurTaps(program: Program, taps: ReturnType<typeof gaussianTaps>) {
+    program.use();
+    const u = program.uniforms;
+    gl.uniform1i(u.uSrc, 0);
+    gl.uniform1i(u.uTaps, taps.count);
+    gl.uniform1fv(u['uOffset[0]'], taps.offsets);
+    gl.uniform1fv(u['uWeight[0]'], taps.weights);
+  }
+  setBlurTaps(glowBlur, gaussianTaps(GLOW_BLUR));
+  downsample.use();
+  gl.uniform1i(downsample.uniforms.uSrc, 0);
+  composite.use();
+  gl.uniform1i(composite.uniforms.uLight, 0);
+  gl.uniform1i(composite.uniforms.uGlow, 1);
+  gl.uniform1i(composite.uniforms.uMottle, 2);
 
   const mesh = gl.createVertexArray();
   const meshBuf = gl.createBuffer();
   const meshIdx = gl.createBuffer();
   let indexCount = 0;
-  let meshKey = '';
+  let meshCols = 0, meshRows = 0;
   // light ⇄ scratch for the sun blur; glow ⇄ glowScratch at quarter resolution.
   let light: FBO | null = null;
   let scratch: FBO | null = null;
   let glow: FBO | null = null;
   let glowScratch: FBO | null = null;
+  let mottle: FBO | null = null;
+  let mottleDirty = true;
   // The light is drawn multisampled, then resolved into `light` to be sampled.
   const msaaFbo = gl.createFramebuffer();
   const msaaRb = gl.createRenderbuffer();
@@ -225,12 +250,12 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
 
   // A grid over the box plus `margin` units per side, so refraction never
   // pulls a gap in from the edge. Cells stay about CELL_PX CSS pixels.
-  function buildMesh(box: readonly [number, number], margin: number) {
-    const cols = Math.min(720, Math.ceil((canvas.clientWidth * (1 + (2 * margin) / box[0])) / CELL_PX));
-    const rows = Math.min(720, Math.ceil((canvas.clientHeight * (1 + (2 * margin) / box[1])) / CELL_PX));
-    const key = `${cols}x${rows}`;
-    if (key === meshKey) return;
-    meshKey = key;
+  function buildMesh(w: number, h: number, bx: number, by: number, margin: number) {
+    const cols = Math.min(720, Math.ceil((w * (1 + (2 * margin) / bx)) / CELL_PX));
+    const rows = Math.min(720, Math.ceil((h * (1 + (2 * margin) / by)) / CELL_PX));
+    if (cols === meshCols && rows === meshRows) return;
+    meshCols = cols;
+    meshRows = rows;
     const verts = new Float32Array((cols + 1) * (rows + 1) * 2);
     for (let y = 0, o = 0; y <= rows; y++) {
       for (let x = 0; x <= cols; x++) { verts[o++] = x / cols; verts[o++] = y / rows; }
@@ -239,8 +264,8 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
     for (let y = 0, o = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const a = y * (cols + 1) + x, b = a + 1, c = a + cols + 1, d = c + 1;
-        idx.set([a, b, c, b, d, c], o);
-        o += 6;
+        idx[o++] = a; idx[o++] = b; idx[o++] = c;
+        idx[o++] = b; idx[o++] = d; idx[o++] = c;
       }
     }
     indexCount = idx.length;
@@ -264,24 +289,40 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
     scratch = target(w, h);
     glow = target(Math.round(w / 4), Math.round(h / 4));
     glowScratch = target(glow.width, glow.height);
-    sunTaps = gaussianTaps(SUN_BLUR * (w / (canvas.clientWidth || w)));
+    setBlurTaps(sunBlur, gaussianTaps(SUN_BLUR * (w / (canvas.clientWidth || w))));
+    mottleDirty = true;
     if (samples > 1) {
       gl.bindRenderbuffer(gl.RENDERBUFFER, msaaRb);
       gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA16F, w, h);
       gl.bindFramebuffer(gl.FRAMEBUFFER, msaaFbo);
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, msaaRb);
     }
-
-    meshKey = '';
   };
   resizeLight();
 
   let time = 0;
   let reveal = reducedMotion.matches ? 1 : 0;
   let grainClock = 0;
-  let waveKey = '';
+  let waveSeed = NaN, waveScale = NaN, waveChoppiness = NaN;
+  let boxX = NaN, boxY = NaN, lastMargin = NaN, lastDepth = NaN;
+  let lastWidth = 0, lastHeight = 0;
+  let mottleSeed = NaN, lastDispersion = NaN;
+  let lastLayers: typeof LAYERS[PaletteName];
   let waves: Wave[] = [];
   const waveData = new Float32Array(WAVES * 4);
+  const wavePhases = new Float64Array(WAVES);
+
+  // Preserve the original phase arithmetic and Float32 rounding without temporary arrays.
+  function setWaves(shift: number) {
+    for (let i = 0; i < WAVES; i++) waveData[i * 4 + 3] = wavePhases[i] + shift * waves[i].spread;
+    gl.uniform4fv(waveUniform, waveData);
+  }
+
+  function blurPass(program: Program, src: FBO, dst: FBO, dx: number, dy: number) {
+    src.attach(0);
+    gl.uniform2f(program.uniforms.uStep, dx * src.texelSizeX, dy * src.texelSizeY);
+    blit(dst);
+  }
 
   function frame(dt: number, rawDtMs: number) {
     if (reducedMotion.matches) {
@@ -297,27 +338,74 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
       if (config.grainPeriod > 0) grainClock += rawDtMs / 1000 / config.grainPeriod;
     }
 
-    const key = `${config.seed}|${config.scale}|${config.choppiness}`;
-    if (key !== waveKey) {
-      waveKey = key;
+    if (config.seed !== waveSeed || config.scale !== waveScale || config.choppiness !== waveChoppiness) {
+      waveSeed = config.seed;
+      waveScale = config.scale;
+      waveChoppiness = config.choppiness;
       waves = makeWaves(config.seed, Math.max(config.scale, 0.1), config.choppiness);
+      for (let i = 0; i < WAVES; i++) {
+        const v = waves[i], o = i * 4;
+        waveData[o] = v.kx;
+        waveData[o + 1] = v.ky;
+        waveData[o + 2] = v.amp;
+      }
     }
+    for (let i = 0; i < WAVES; i++) wavePhases[i] = waves[i].phase - waves[i].omega * time;
     const layers = LAYERS[config.palette];
-    // Shifts each wave's phase by `shift` scaled per wave, so a ribbon is the
-    // same web subtly reshaped rather than slid sideways.
-    const setWaves = (shift: number) => waves.forEach((v, i) =>
-      waveData.set([v.kx, v.ky, v.amp, v.phase - v.omega * time + shift * (0.4 + 1.2 * hash(i + 11.5))], i * 4));
+    if (layers !== lastLayers) {
+      lastLayers = layers;
+      if (layers) for (let i = 0; i < layers.length; i++) layerColors.set(layers[i], i * 3);
+    }
+    if (config.dispersion !== lastDispersion) {
+      lastDispersion = config.dispersion;
+      for (let i = 0; i < SPECTRUM.length; i++) etas[i] = 1 / ior(SPECTRUM[i], config.dispersion);
+    }
 
     const w = canvas.clientWidth || 1;
     const h = canvas.clientHeight || 1;
     // One unit: the shorter side, but at least a third of the longer, so a
     // short wide header still gets full-size ripples.
     const unit = Math.max(Math.min(w, h), Math.max(w, h) / 3);
-    const box = [w / unit, h / unit] as const;
+    const bx = w / unit, by = h / unit;
     const depth = Math.max(config.depth, 0.02) * Math.max(config.scale, 0.1);
     // How far refraction can shift light sideways, with room to spare.
     const margin = Math.min(0.08 + 0.12 * depth * Math.max(config.choppiness, 0), 1);
-    buildMesh(box, margin);
+    if (w !== lastWidth || h !== lastHeight || margin !== lastMargin) {
+      buildMesh(w, h, bx, by, margin);
+      lastWidth = w;
+      lastHeight = h;
+    }
+    if (bx !== boxX || by !== boxY || margin !== lastMargin || depth !== lastDepth) {
+      lightProgram.use();
+      if (bx !== boxX || by !== boxY) mottleDirty = true;
+      boxX = bx;
+      boxY = by;
+      lastMargin = margin;
+      lastDepth = depth;
+      gl.uniform2f(lightUniforms.uBox, bx, by);
+      gl.uniform1f(lightUniforms.uMargin, margin);
+      gl.uniform1f(lightUniforms.uDepth, depth);
+    }
+    if (config.seed !== mottleSeed) {
+      mottleSeed = config.seed;
+      mottleDirty = true;
+    }
+    if (mottleDirty) {
+      // At least 256 texels per floor-space unit keeps this four-octave noise
+      // smooth even at reduced DPR. Half-float filtering is WebGL2 core.
+      const mw = Math.min(canvas.width, Math.max(Math.ceil(bx * 256), Math.round(canvas.width / 4)));
+      const mh = Math.min(canvas.height, Math.max(Math.ceil(by * 256), Math.round(canvas.height / 4)));
+      if (!mottle || mottle.width !== mw || mottle.height !== mh) {
+        mottle?.dispose();
+        mottle = createFBO(gl, mw, mh, gl.R16F, gl.RED, gl.HALF_FLOAT, gl.LINEAR);
+      }
+      mottleProgram.use();
+      gl.uniform2f(mottleProgram.uniforms.uBox, bx, by);
+      gl.uniform2f(mottleProgram.uniforms.uSeed, hash(config.seed + 4) * 97, hash(config.seed + 5) * 97);
+      blit(mottle);
+      mottle.attach(2);
+      mottleDirty = false;
+    }
 
     // Light: one refraction of the mesh per wavelength, summed.
     gl.bindFramebuffer(gl.FRAMEBUFFER, samples > 1 ? msaaFbo : light!.fbo);
@@ -327,27 +415,21 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
     lightProgram.use();
-    let u = lightProgram.uniforms;
-    gl.uniform2f(u.uBox, box[0], box[1]);
-    gl.uniform1f(u.uMargin, margin);
-    gl.uniform1f(u.uDepth, depth);
     gl.bindVertexArray(mesh);
     if (layers) {
-      layers.forEach((color, i) => {
+      gl.uniform1f(lightUniforms.uEta, 1 / 1.333);
+      for (let i = 0; i < layers.length; i++) {
         setWaves((i / (layers.length - 1) - 0.5) * LAYER_SPREAD * config.dispersion);
-        gl.uniform4fv(u['uWave[0]'], waveData);
-        gl.uniform1f(u.uEta, 1 / 1.333);
-        gl.uniform3fv(u.uColor, color);
+        gl.uniform3fv(lightUniforms.uColor, layerColors, i * 3, 3);
         gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0);
-      });
+      }
     } else {
       setWaves(0);
-      gl.uniform4fv(u['uWave[0]'], waveData);
-      SPECTRUM.forEach((nm, i) => {
-        gl.uniform1f(u.uEta, 1 / ior(nm, config.dispersion));
-        gl.uniform3fv(u.uColor, weights[i]);
+      for (let i = 0; i < SPECTRUM.length; i++) {
+        gl.uniform1f(lightUniforms.uEta, etas[i]);
+        gl.uniform3fv(lightUniforms.uColor, weights, i * 3, 3);
         gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0);
-      });
+      }
     }
     gl.bindVertexArray(null);
     gl.disable(gl.BLEND);
@@ -360,40 +442,30 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
     }
 
     // The sun's disk: blur the light, across then down.
-    blur.use();
-    u = blur.uniforms;
-    const blurPass = (src: FBO, dst: FBO, taps: ReturnType<typeof gaussianTaps>, dx: number, dy: number) => {
-      gl.uniform1i(u.uSrc, src.attach(0));
-      gl.uniform2f(u.uStep, dx * src.texelSizeX, dy * src.texelSizeY);
-      gl.uniform1i(u.uTaps, taps.count);
-      gl.uniform1fv(u['uOffset[0]'], taps.offsets);
-      gl.uniform1fv(u['uWeight[0]'], taps.weights);
-      blit(dst);
-    };
-    blurPass(light!, scratch!, sunTaps, 1, 0);
-    blurPass(scratch!, light!, sunTaps, 0, 1);
+    sunBlur.use();
+    blurPass(sunBlur, light!, scratch!, 1, 0);
+    blurPass(sunBlur, scratch!, light!, 0, 1);
 
     // The glow: a quarter-resolution copy, blurred wide enough that its texels never show.
     downsample.use();
-    gl.uniform1i(downsample.uniforms.uSrc, light!.attach(0));
+    light!.attach(0);
     blit(glow);
-    blur.use();
-    blurPass(glow!, glowScratch!, glowTaps, 1, 0);
-    blurPass(glowScratch!, glow!, glowTaps, 0, 1);
+    glowBlur.use();
+    blurPass(glowBlur, glow!, glowScratch!, 1, 0);
+    blurPass(glowBlur, glowScratch!, glow!, 0, 1);
 
-    const [floor, sun] = (PALETTES[config.palette] ?? PALETTES.pool).map(hexToRgb);
+    const colors = PALETTES[config.palette] ?? PALETTES.pool;
     composite.use();
-    u = composite.uniforms;
-    gl.uniform1i(u.uLight, light!.attach(0));
-    gl.uniform1i(u.uGlow, glow!.attach(1));
-    gl.uniform2f(u.uBox, box[0], box[1]);
-    gl.uniform2f(u.uSeed, hash(config.seed + 4) * 97, hash(config.seed + 5) * 97);
+    const u = composite.uniforms;
+    light!.attach(0);
+    glow!.attach(1);
+    const [floor, sun] = colors.map(hexToLinear);
     gl.uniform3fv(u.uFloor, floor);
     gl.uniform3fv(u.uSun, sun);
     gl.uniform1f(u.uIntensity, config.intensity * (layers ? LAYER_INTENSITY : 1));
     gl.uniform1f(u.uSharpness, config.sharpness + (layers ? LAYER_SHARPNESS : 0));
-    gl.uniform1f(u.uReveal, 1 - Math.pow(1 - reveal, 3));
     gl.uniform1f(u.uFill, layers ? 0 : 0.3);
+    gl.uniform1f(u.uReveal, 1 - Math.pow(1 - reveal, 3));
     setGrain(gl, u, config.grain, grainClock);
     blit(null);
   }

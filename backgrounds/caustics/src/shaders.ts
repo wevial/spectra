@@ -111,6 +111,19 @@ void main() {
 }
 `;
 
+// Static floor mottle, sampled densely enough to retain its four octaves.
+export const MOTTLE = /* glsl */ `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform vec2 uBox;
+uniform vec2 uSeed;
+out float fragColor;
+${NOISE}
+void main() {
+  fragColor = fbm(vUv * uBox * 1.7 + uSeed);
+}
+`;
+
 // Pass 2, full resolution: the floor in shade, mottled, lit by the caustics
 // through a contrast curve that thins the bright web and darkens the cells,
 // plus a wide soft bloom, rolled off toward white so the line cores burn out
@@ -120,10 +133,9 @@ precision highp float;
 in vec2 vUv;
 uniform sampler2D uLight;   // blurred to the sun's disk
 uniform sampler2D uGlow;    // quarter resolution, widely blurred
-uniform vec2 uBox;
-uniform vec2 uSeed;
-uniform vec3 uFloor;        // sRGB
-uniform vec3 uSun;          // sRGB
+uniform sampler2D uMottle;
+uniform vec3 uFloor;        // linear RGB
+uniform vec3 uSun;          // linear RGB
 uniform float uIntensity;
 uniform float uSharpness;   // contrast exponent on the light
 uniform float uReveal;      // mount fade-in, 0..1
@@ -144,9 +156,9 @@ void main() {
   vec3 light = texture(uLight, vUv).rgb;
   vec3 glow = texture(uGlow, vUv).rgb;
 
-  float m = fbm(vUv * uBox * 1.7 + uSeed);
-  vec3 floorCol = toLinear(uFloor) * (0.7 + 0.6 * m);
-  vec3 sun = toLinear(uSun);
+  float m = texture(uMottle, vUv).r;
+  vec3 floorCol = uFloor * (0.7 + 0.6 * m);
+  vec3 sun = uSun;
 
   // The light averages 1, brighter along the web. The power thins the lines
   // and sinks the cells; the linear part keeps the cells lit, and the glow
