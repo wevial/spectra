@@ -198,23 +198,25 @@ vec3 shoulder(vec3 c) {
 }
 
 // Prism: silver light split into a full spectrum. Taps across the split,
-// each tinted by its own hue from red to violet and normalized per channel,
-// so thin strands come apart into side-by-side bands of color while wide
-// hubs, where every tap agrees, stay silver.
+// each tinted by its own hue from red to violet; each channel averages the
+// raw scent it sees, and only then goes through the strand curve, which
+// keeps the bands crisp instead of smearing them. Thin strands come apart
+// into side-by-side colors while wide hubs, where every tap agrees, stay
+// silver.
 vec3 prism(vec2 uv) {
-  vec3 hz = vec3(0.0), st = vec3(0.0), co = vec3(0.0), ws = vec3(0.0);
+  vec3 d = vec3(0.0), ws = vec3(0.0);
   for (int i = 0; i < ${PRISM_BANDS}; i++) {
     vec3 band = uBand[i];
-    vec3 w = weights(uv + uSplit * (float(i) / ${PRISM_BANDS - 1}.0 - 0.5) * 2.0);
-    hz += band * w.x;
-    st += band * w.y;
-    co += band * w.z;
+    d += band * texture(uField, uv + uSplit * (float(i) / ${PRISM_BANDS - 1}.0 - 0.5) * 2.0).r;
     ws += band;
   }
+  d *= uGain / ws;
   float food = clamp(texture(uFood, uv).z, 0.0, 1.0);
-  vec3 c = (uHaze * hz + uHypha * st * (0.4 + 0.8 * food) + uTip * co * food) / ws;
+  vec3 c = uHaze * smoothstep(0.02, 0.5, d) * 0.3
+         + uHypha * pow(smoothstep(0.06, 0.95, d), vec3(1.6)) * (0.4 + 0.8 * food)
+         + uTip * smoothstep(0.6, 1.3, d) * food;
   float grey = dot(c, vec3(0.3333));
-  return max(grey + (c - grey) * 1.8, 0.0); // let the split read as color
+  return max(grey + (c - grey) * 2.0, 0.0); // let the split read as color
 }
 
 void main() {

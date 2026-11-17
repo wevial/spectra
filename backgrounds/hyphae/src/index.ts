@@ -78,7 +78,7 @@ const REVEAL_MS = 1500;
 const SPORE_EVERY = 0.25;
 const HALO_SIGMA = 2;
 /** How far `prism` splits red from blue, field cells either way. */
-const PRISM_SPLIT = 8;
+const PRISM_SPLIT = 7;
 const WIDE_SIGMA = 4;
 
 /**
