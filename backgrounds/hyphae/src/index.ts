@@ -4,7 +4,7 @@
 // food, fuse into loops, then thin and retreat as it runs out, while spores
 // keep landing and sprouting. Ignores the pointer.
 
-import { Program, VERTEX, makeBlit, createStage, createFBO, createDoubleFBO, setGrain } from '@spectra/core';
+import { Program, VERTEX, makeBlit, createStage, createFBO, createDoubleFBO, setGrain, random } from '@spectra/core';
 import type { FBO, DoubleFBO } from '@spectra/core';
 import { AGENT_STEP, DEPOSIT_VERT, DIFFUSE } from '@spectra/mycelium';
 import { AGENT_INIT, FOOD, SPORE, DEPOSIT_FRAG, SEED, BLUR, COMPOSITE } from './shaders';
@@ -90,9 +90,8 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
   const config: HyphaeConfig = { ...DEFAULTS, ...opts };
 
   let onResize = () => {};
-  const stage = createStage(container, { floatTargets: true, onResize: () => onResize() });
+  const stage = createStage(container, { fallback: 'hyphae-fallback', floatTargets: true, onResize: () => onResize() });
   if (!stage) {
-    container.classList.add('hyphae-fallback');
     return { config, reset() {}, destroy() {} };
   }
   const { gl, canvas, reducedMotion } = stage;
@@ -170,10 +169,10 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
     side = Math.max(16, Math.ceil(Math.sqrt(f.width * f.height * density)));
     agents?.dispose();
     agents = createDoubleFBO(gl, side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
-    const clusters = seedClusters(Math.random, 4);
+    const clusters = seedClusters(random, 4);
     init.use();
     gl.uniform1f(init.uniforms.uAspect, f.width / f.height);
-    gl.uniform1f(init.uniforms.uSeed, Math.random() * 1000);
+    gl.uniform1f(init.uniforms.uSeed, random() * 1000);
     gl.uniform1i(init.uniforms.uClusters, clusters.count);
     gl.uniform4fv(init.uniforms['uCluster[0]'], clusters.data);
     blit(agents.read);

@@ -192,11 +192,11 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
   let resizeLight = () => {};
   let drawn = '';
   const stage = createStage(container, {
+    fallback: 'caustics-fallback',
     floatTargets: true,
     onResize: () => { resizeLight(); drawn = ''; },
   });
   if (!stage) {
-    container.classList.add('caustics-fallback');
     return { config, destroy() {} };
   }
   const { gl, canvas, reducedMotion } = stage;

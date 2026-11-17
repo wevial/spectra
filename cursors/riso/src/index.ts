@@ -70,11 +70,11 @@ export function mount(
   let trail: Trail | null = null;
   let posterDirty = true;
   const stage = createStage(container, {
+    fallback: 'riso-fallback',
     floatTargets: true,
     onResize: () => { trail?.resize(); posterDirty = true; },
   });
   if (!stage) {
-    container.classList.add('riso-fallback');
     return { config, setSource: async () => {}, destroy() {} };
   }
   const { gl, pointer, reducedMotion } = stage;

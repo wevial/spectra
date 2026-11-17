@@ -48,9 +48,8 @@ export function mount(container: HTMLElement, opts: Partial<BlackHoleConfig> = {
 
   let trail: Trail | null = null;
   // The near-hole ray march is the costliest pass in spectra; cap resolution.
-  const stage = createStage(container, { floatTargets: true, dprCap: 1.5, onResize: () => trail?.resize() });
+  const stage = createStage(container, { fallback: 'blackhole-fallback', floatTargets: true, dprCap: 1.5, onResize: () => trail?.resize() });
   if (!stage) {
-    container.classList.add('blackhole-fallback');
     return { config, destroy() {} };
   }
   const { gl, pointer, reducedMotion } = stage;

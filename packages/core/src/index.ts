@@ -3,3 +3,4 @@ export * from './glsl';
 export * from './stage';
 export * from './trail';
 export * from './source';
+export * from './random';

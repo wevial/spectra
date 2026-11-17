@@ -5,7 +5,7 @@
 // With `cursor: false` it's a background: the pointer is ignored, and a few
 // invisible wanderers push slow currents through the same sim instead.
 
-import { Program, makeBlit, createStage, setGrain } from '@spectra/core';
+import { Program, makeBlit, createStage, setGrain, random } from '@spectra/core';
 import { VERTEX, COMPOSITE } from './shaders.js';
 import { FluidSim, CONFIG } from './fluid.js';
 import { Governor, TIERS } from './perf.js';
@@ -26,6 +26,7 @@ export function mount(container, opts = {}) {
 
   const stage = createStage(container, {
     floatTargets: true,
+    fallback: 'nebula-fallback',
     // Nebula's own governor trades detail as well as resolution (perf.js).
     adaptive: false,
     onResize: () => fluid?.resize(),
@@ -92,9 +93,9 @@ export function mount(container, opts = {}) {
       if (cursor && pointer.active && speed > 0) {
         const part = Math.min(speed * 2.8, 0.09);
         for (let i = 0; i < 3; i++) {
-          const jx = (Math.random() - 0.5) * 0.016;
-          const jy = (Math.random() - 0.5) * 0.016;
-          const rad = 0.0028 * (0.5 + Math.random());
+          const jx = (random() - 0.5) * 0.016;
+          const jy = (random() - 0.5) * 0.016;
+          const rad = 0.0028 * (0.5 + random());
           fluid.splat('offset', pointer.x + jx, pointer.y + jy, part * 0.35, 0, rad, 1);
         }
         const f = fluid.config.splatForce * 0.5;

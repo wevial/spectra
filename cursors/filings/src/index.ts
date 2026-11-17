@@ -4,7 +4,7 @@
 // when it fades, so the path you drew stays imprinted. Click to pin a magnet;
 // pinned fields add up.
 
-import { Program, VERTEX, makeBlit, createStage, createDoubleFBO } from '@spectra/core';
+import { Program, VERTEX, makeBlit, createStage, createDoubleFBO, random } from '@spectra/core';
 import type { DoubleFBO } from '@spectra/core';
 import { INIT, UPDATE, RENDER } from './shaders';
 
@@ -66,9 +66,8 @@ export function mount(container: HTMLElement, opts: Partial<FilingsConfig> = {})
   const config: FilingsConfig = { ...DEFAULTS, ...opts };
 
   let onResize = () => {};
-  const stage = createStage(container, { floatTargets: true, onResize: () => onResize() });
+  const stage = createStage(container, { fallback: 'filings-fallback', floatTargets: true, onResize: () => onResize() });
   if (!stage) {
-    container.classList.add('filings-fallback');
     return { config, shake() {}, clear() {}, destroy() {} };
   }
   const { gl, canvas, pointer, reducedMotion } = stage;
@@ -89,7 +88,7 @@ export function mount(container: HTMLElement, opts: Partial<FilingsConfig> = {})
       state = createDoubleFBO(gl, w, h, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     }
     init.use();
-    gl.uniform1f(init.uniforms.uSeed, Math.random() * 1000);
+    gl.uniform1f(init.uniforms.uSeed, random() * 1000);
     blit(state.read);
   }
   onResize = shake;

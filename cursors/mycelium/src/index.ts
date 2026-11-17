@@ -3,7 +3,7 @@
 // rerouting itself. The cursor's trail smells like food: veins bend toward
 // wherever you've been and thicken along your path.
 
-import { Program, VERTEX, Trail, makeBlit, createStage, createFBO, createDoubleFBO } from '@spectra/core';
+import { Program, VERTEX, Trail, makeBlit, createStage, createFBO, createDoubleFBO, random } from '@spectra/core';
 import type { DoubleFBO } from '@spectra/core';
 import { AGENT_INIT, AGENT_STEP, DEPOSIT_VERT, DEPOSIT_FRAG, DIFFUSE, RENDER } from './shaders';
 
@@ -80,11 +80,11 @@ export function mount(container: HTMLElement, opts: Partial<MyceliumConfig> = {}
   let trail: Trail | null = null;
   let onResize = () => {};
   const stage = createStage(container, {
+    fallback: 'mycelium-fallback',
     floatTargets: true,
     onResize: () => { trail?.resize(); onResize(); },
   });
   if (!stage) {
-    container.classList.add('mycelium-fallback');
     return { config, reset() {}, destroy() {} };
   }
   const { gl, canvas, pointer, reducedMotion } = stage;
@@ -130,7 +130,7 @@ export function mount(container: HTMLElement, opts: Partial<MyceliumConfig> = {}
     agents = createDoubleFBO(gl, side, side, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
     init.use();
     gl.uniform1f(init.uniforms.uAspect, f.width / f.height);
-    gl.uniform1f(init.uniforms.uSeed, Math.random() * 1000);
+    gl.uniform1f(init.uniforms.uSeed, random() * 1000);
     blit(agents.read);
 
     gl.bindVertexArray(points);

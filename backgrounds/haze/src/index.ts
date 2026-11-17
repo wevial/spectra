@@ -79,11 +79,11 @@ export function mount(container: HTMLElement, opts: Partial<HazeConfig> = {}): H
   let resizeGlow = () => {};
   let drawn = '';
   const stage = createStage(container, {
+    fallback: 'haze-fallback',
     floatTargets: true,
     onResize: () => { resizeGlow(); drawn = ''; },
   });
   if (!stage) {
-    container.classList.add('haze-fallback');
     return { config, destroy() {} };
   }
   const { gl, canvas, reducedMotion } = stage;

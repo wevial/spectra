@@ -64,11 +64,11 @@ export function mount(container: HTMLElement, opts: Partial<WispConfig> = {}): W
   let trail: Trail | null = null;
   let resizeLight = () => {};
   const stage = createStage(container, {
+    fallback: 'wisp-fallback',
     floatTargets: true,
     onResize: () => { trail?.resize(); resizeLight(); },
   });
   if (!stage) {
-    container.classList.add('wisp-fallback');
     return { config, destroy() {} };
   }
   const { gl, canvas, pointer, reducedMotion } = stage;

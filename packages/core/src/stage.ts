@@ -3,6 +3,11 @@
 // that pauses while the tab is hidden or the canvas is scrolled out of view.
 // Resolution adapts to the GPU: each frame is timed (GPU timer queries where
 // available) and the drawing buffer shrinks when frames run over budget.
+// A lost context stops drawing and shows the effect's static fallback;
+// GL resources die with it, so the way back is a fresh mount.
+//
+// Events on the container: `stageframe` after every drawn frame (detail: the
+// frame count), and `stagelost` when the context is lost.
 
 import { AdaptiveResolution } from './resolution';
 
@@ -27,6 +32,8 @@ export interface Stage {
   /** Resize the drawing buffer to the canvas box. Returns true if it changed. */
   resize(): boolean;
   start(frame: (dt: number, rawDtMs: number) => void): void;
+  /** Run one frame now, `dt` seconds long. For stages driven by `driveStagesManually`. */
+  step(dt: number): void;
   stop(): void;
   destroy(): void;
 }
@@ -39,7 +46,26 @@ export interface StageOptions {
   adaptive?: boolean;
   /** GPU ms per frame the adaptive resolution aims to stay under (default 6). */
   budgetMs?: number;
+  /** Class put on the container when WebGL2 is unavailable or the context is lost. */
+  fallback?: string;
   onResize?: () => void;
+}
+
+interface Manual {
+  dpr: number;
+  stages: Stage[];
+}
+let manual: Manual | null = null;
+
+/**
+ * Deterministic capture: stages created after this call run no render loop
+ * and never pause; the caller advances them with `stage.step(dt)`. Resolution
+ * is fixed at `dpr` (still capped by the stage's dprCap), with no adaptive
+ * scaling. Returns the list the new stages are pushed onto.
+ */
+export function driveStagesManually({ dpr }: { dpr: number }): Stage[] {
+  manual = { dpr, stages: [] };
+  return manual.stages;
 }
 
 /** Returns null when WebGL2 (or float targets, if asked) is unavailable. */
@@ -57,6 +83,7 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   });
   if (!context || (opts.floatTargets && !context.getExtension('EXT_color_buffer_float'))) {
     canvas.remove();
+    if (opts.fallback) container.classList.add(opts.fallback);
     return null;
   }
   const gl: WebGL2RenderingContext = context;
@@ -85,7 +112,8 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   document.addEventListener('pointerleave', () => { pointer.active = false; }, listen);
   window.addEventListener('blur', () => { pointer.active = false; }, listen);
 
-  const adaptive = opts.adaptive === false ? null : new AdaptiveResolution({ budgetMs: opts.budgetMs });
+  const driven = manual;
+  const adaptive = opts.adaptive === false || driven ? null : new AdaptiveResolution({ budgetMs: opts.budgetMs });
   // GPU time per frame, read back a few frames late. Disjoint results
   // (power state changes, context switches) are dropped.
   const timer = adaptive ? gl.getExtension('EXT_disjoint_timer_query_webgl2') : null;
@@ -97,6 +125,7 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   let last = 0;
   let visible = !document.hidden;
   let onScreen = true;
+  let frames = 0;
 
   const stage: Stage = {
     gl,
@@ -108,7 +137,7 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
       return adaptive?.scale ?? 1;
     },
     get dpr() {
-      return Math.min(window.devicePixelRatio || 1, stage.dprCap) * stage.scale;
+      return Math.min(driven?.dpr ?? (window.devicePixelRatio || 1), stage.dprCap) * stage.scale;
     },
     resize() {
       const w = Math.max(1, Math.round(canvas.clientWidth * stage.dpr));
@@ -121,6 +150,10 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
     start(frame) {
       frameFn = frame;
       schedule();
+    },
+    step(dt) {
+      if (!frameFn) return;
+      draw(dt, dt * 1000);
     },
     stop() {
       frameFn = null;
@@ -157,18 +190,23 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
 
     const q = timer && queries.length < 4 ? gl.createQuery() : null;
     if (q) gl.beginQuery(timer!.TIME_ELAPSED_EXT, q);
-    frameFn(Math.min(Math.max(rawDt / 1000, 0), 1 / 30), rawDt);
+    draw(Math.min(Math.max(rawDt / 1000, 0), 1 / 30), rawDt);
     if (q) {
       gl.endQuery(timer!.TIME_ELAPSED_EXT);
       queries.push(q);
     }
-    pointer.dx = 0;
-    pointer.dy = 0;
     schedule();
   }
 
+  function draw(dt: number, rawDt: number) {
+    frameFn!(dt, rawDt);
+    pointer.dx = 0;
+    pointer.dy = 0;
+    container.dispatchEvent(new CustomEvent('stageframe', { detail: ++frames }));
+  }
+
   function schedule() {
-    if (rafId || !frameFn || !visible || !onScreen) return;
+    if (driven || rafId || !frameFn || !visible || !onScreen) return;
     if (!last) last = performance.now();
     rafId = requestAnimationFrame(tick);
   }
@@ -198,6 +236,13 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   // every resize step paints one blank frame: a black flash while dragging.
   // A zero-length frame redraws in place; pointer deltas it consumes are
   // cleared so the next tick doesn't apply them twice.
+  canvas.addEventListener('webglcontextlost', () => {
+    stage.stop();
+    canvas.style.visibility = 'hidden';
+    if (opts.fallback) container.classList.add(opts.fallback);
+    container.dispatchEvent(new Event('stagelost'));
+  }, { signal: ac.signal });
+
   const ro = new ResizeObserver(() => {
     if (!stage.resize()) return;
     opts.onResize?.();
@@ -210,5 +255,6 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   ro.observe(canvas);
 
   stage.resize();
+  driven?.stages.push(stage);
   return stage;
 }

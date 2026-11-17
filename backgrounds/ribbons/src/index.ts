@@ -87,11 +87,11 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
   let resizeGlow = () => {};
   let drawn = '';
   const stage = createStage(container, {
+    fallback: 'ribbons-fallback',
     floatTargets: true,
     onResize: () => { resizeGlow(); drawn = ''; },
   });
   if (!stage) {
-    container.classList.add('ribbons-fallback');
     return { config, pulse() {}, destroy() {} };
   }
   const { gl, canvas, reducedMotion } = stage;

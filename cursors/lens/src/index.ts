@@ -48,9 +48,8 @@ export function mount(
   const config: LensConfig = { ...DEFAULTS, ...rest };
 
   let posterDirty = true;
-  const stage = createStage(container, { onResize: () => { posterDirty = true; } });
+  const stage = createStage(container, { fallback: 'lens-fallback', onResize: () => { posterDirty = true; } });
   if (!stage) {
-    container.classList.add('lens-fallback');
     return { config, setSource: async () => {}, destroy() {} };
   }
   const { gl, pointer, reducedMotion } = stage;

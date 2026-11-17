@@ -62,10 +62,9 @@ export interface FilmHandle {
 export function mount(container: HTMLElement, opts: Partial<FilmConfig> = {}): FilmHandle {
   const config: FilmConfig = { ...DEFAULTS, ...opts };
 
-  const stage = createStage(container);
+  const stage = createStage(container, { fallback: 'film-fallback' });
   const shuffle = () => { config.seed = Math.floor(Math.random() * 1000); };
   if (!stage) {
-    container.classList.add('film-fallback');
     return { config, shuffle, destroy() {} };
   }
   const { gl, canvas, pointer, reducedMotion } = stage;

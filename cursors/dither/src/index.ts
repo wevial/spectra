@@ -57,9 +57,8 @@ export function mount(container: HTMLElement, opts: Partial<DitherConfig> = {}):
   const config: DitherConfig = { ...DEFAULTS, ...opts };
 
   let trail: Trail | null = null;
-  const stage = createStage(container, { floatTargets: true, onResize: () => trail?.resize() });
+  const stage = createStage(container, { fallback: 'dither-fallback', floatTargets: true, onResize: () => trail?.resize() });
   if (!stage) {
-    container.classList.add('dither-fallback');
     return { config, destroy() {} };
   }
   const { gl, pointer, reducedMotion } = stage;

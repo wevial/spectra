@@ -63,11 +63,11 @@ export function mount(container: HTMLElement, opts: Partial<AuroraConfig> = {}):
   let trail: Trail | null = null;
   let resizeAurora = () => {};
   const stage = createStage(container, {
+    fallback: 'aurora-fallback',
     floatTargets: true,
     onResize: () => { trail?.resize(); resizeAurora(); },
   });
   if (!stage) {
-    container.classList.add('aurora-fallback');
     return { config, destroy() {} };
   }
   const { gl, canvas, pointer, reducedMotion } = stage;

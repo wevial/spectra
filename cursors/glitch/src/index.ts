@@ -54,9 +54,8 @@ export function mount(container: HTMLElement, opts: Partial<GlitchConfig> = {}):
 
   let trail: Trail | null = null;
   let scene: FBO | null = null;
-  const stage = createStage(container, { floatTargets: true, onResize: () => allocate() });
+  const stage = createStage(container, { fallback: 'glitch-fallback', floatTargets: true, onResize: () => allocate() });
   if (!stage) {
-    container.classList.add('glitch-fallback');
     return { config, destroy() {} };
   }
   const { gl, pointer, reducedMotion } = stage;
