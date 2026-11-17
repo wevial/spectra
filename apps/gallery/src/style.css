@@ -227,10 +227,10 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
 }
 .hyphae-fallback {
   background:
-    radial-gradient(30% 40% at 35% 45%, rgba(127, 242, 196, 0.16), transparent 70%),
-    radial-gradient(25% 35% at 68% 58%, rgba(127, 242, 196, 0.12), transparent 70%),
-    repeating-conic-gradient(from 10deg at 45% 50%, rgba(127, 242, 196, 0.05) 0 1deg, transparent 1deg 13deg),
-    #030605;
+    radial-gradient(30% 40% at 35% 45%, rgba(120, 200, 255, 0.14), transparent 70%),
+    radial-gradient(25% 35% at 68% 58%, rgba(255, 140, 210, 0.12), transparent 70%),
+    repeating-conic-gradient(from 10deg at 45% 50%, rgba(220, 220, 255, 0.05) 0 1deg, transparent 1deg 13deg),
+    #040406;
 }
 .wisp-fallback {
   background:

@@ -52,7 +52,9 @@ void main() {
     float q = dot(d, d) / (p.z * p.z);
     food += p.w * exp(-q * (2.0 + rag * 2.5));
   }
-  fragColor = vec4(0.0, 0.0, min(food, 1.5), 1.0);
+  // .w: the ground's slow mottle, smooth enough to live at this resolution.
+  float mottle = fbm(vUv * vec2(uAspect, 1.0) * 3.0 + uTime * 0.004);
+  fragColor = vec4(0.0, 0.0, min(food, 1.5), mottle);
 }
 `;
 
@@ -89,6 +91,8 @@ void main() {
 
 // Scent to light, shared by the bloom seed and the composite: a faint haze
 // of exploring agents, glowing strands, and hot cores where veins feed.
+// Light is linear in the three weights, so callers average weights over
+// their taps and color once per pixel.
 const SHADE = /* glsl */ `
 uniform sampler2D uField;
 uniform sampler2D uFood;
@@ -100,8 +104,14 @@ uniform vec3 uHaze;
 uniform vec3 uHypha;
 uniform vec3 uTip;
 
-vec3 shade(vec2 uv) {
+// Haze, strand and core weights for one scent sample. Faint branches stay
+// dim and trunks carry the light.
+vec3 weights(vec2 uv) {
   float d = texture(uField, uv).r * uGain;
+  return vec3(smoothstep(0.02, 0.5, d) * 0.3, pow(smoothstep(0.06, 0.95, d), 1.6), smoothstep(0.6, 1.3, d));
+}
+
+vec3 light(vec3 w, vec2 uv) {
   float food = clamp(texture(uFood, uv).z, 0.0, 1.0);
   vec3 haze = uHaze, hypha = uHypha;
   if (uSpectral > 0.5) {
@@ -111,11 +121,14 @@ vec3 shade(vec2 uv) {
     hypha = max(fromOklab(high), 0.0);
     haze = max(fromOklab(mid), 0.0) * 0.12;
   }
-  // Faint branches stay dim and trunks carry the light.
-  vec3 col = haze * smoothstep(0.02, 0.5, d) * 0.3;
-  col += hypha * pow(smoothstep(0.06, 0.95, d), 1.6) * (0.4 + 0.8 * food);
-  col += uTip * smoothstep(0.6, 1.3, d) * food;
-  return col;
+  return haze * w.x + hypha * w.y * (0.4 + 0.8 * food) + uTip * w.z * food;
+}
+
+// Four weights taps at ±o around uv, averaged, then lit once.
+vec3 shade4(vec2 uv, vec2 o) {
+  vec3 w = weights(uv + vec2(-o.x, -o.y)) + weights(uv + vec2(o.x, -o.y))
+         + weights(uv + vec2(-o.x, o.y)) + weights(uv + vec2(o.x, o.y));
+  return light(w * 0.25, uv);
 }
 `;
 
@@ -133,9 +146,7 @@ ${COLOR}
 ${RAINBOW}
 ${SHADE}
 void main() {
-  vec3 s = shade(vUv + uCell * vec2(-1, -1)) + shade(vUv + uCell * vec2(1, -1))
-         + shade(vUv + uCell * vec2(-1, 1)) + shade(vUv + uCell * vec2(1, 1));
-  fragColor = vec4(min(s * 0.25, vec3(4.0)), 1.0);
+  fragColor = vec4(min(shade4(vUv, uCell), vec3(4.0)), 1.0);
 }
 `;
 
@@ -185,11 +196,8 @@ vec3 shoulder(vec3 c) {
 
 void main() {
   // A touch of extra filtering: half-cell taps soften the strands' pixel noise.
-  vec2 h = uCell * 0.5;
-  vec3 net = (shade(vUv + vec2(-h.x, -h.y)) + shade(vUv + vec2(h.x, -h.y))
-            + shade(vUv + vec2(-h.x, h.y)) + shade(vUv + vec2(h.x, h.y))) * 0.25;
-  vec2 p = vUv * vec2(uAspect, 1.0);
-  vec3 col = uGround * (0.75 + 0.5 * fbm(p * 3.0 + uTime * 0.004));
+  vec3 net = shade4(vUv, uCell * 0.5);
+  vec3 col = uGround * (0.75 + 0.5 * texture(uFood, vUv).w);
   col += net * uBright;
   col += (texture(uHalo, vUv).rgb * 0.3 + texture(uWide, vUv).rgb * 0.35) * uGlow * uBright;
   vec2 c = vUv - 0.5;

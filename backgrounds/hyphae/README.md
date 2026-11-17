@@ -17,9 +17,9 @@ hyphae.reset();         // clear the plate and bloom a fresh colony
 hyphae.destroy();
 ```
 
-Palettes: `foxfire` (default), bioluminescent green; `ember`, warm orange;
-`spore`, violet; `frost`, silver-blue; `spectral`, a rainbow that drifts
-across the plate (see `PALETTES`). `food`, `cycle`, `appetite`, `barren` and
+Palettes: `spectral` (default), a rainbow that drifts across the plate;
+`foxfire`, bioluminescent green; `ember`, warm orange; `spore`, violet;
+`frost`, silver-blue (see `PALETTES`). `food`, `cycle`, `appetite`, `barren` and
 `spores` shape how restless the network is; the sim knobs match the cursor's.
 See `DEFAULTS` in `src/index.ts` for every option.
 
@@ -48,12 +48,14 @@ See `DEFAULTS` in `src/index.ts` for every option.
    exploring agents, strands whose brightness climbs steeply with density
    (fine branches stay dim, trunks carry the light) and are brighter on
    food, and white-hot cores where veins converge on a patch. Four taps
-   half a cell apart soften the strands' pixel noise.
+   half a cell apart soften the strands' pixel noise; light is linear in
+   those three weights, so the taps average weights and color once.
 6. **Bloom.** The same shading, averaged over 4×4 cells into a quarter-CSS
    resolution target, seeds two separable Gaussian blurs: a tight halo there
    and a wide glow at eighth resolution. Both are blurred well past their
    texel size, so upsampling never shows blocks.
-7. **Finish.** A near-black ground with a faint slow mottle, a soft
+7. **Finish.** A near-black ground with a faint slow mottle (computed with
+   the food, at an eighth of the resolution), a soft
    shoulder on highlights, a light vignette and film grain (`GRAIN` from
    `@spectra/core`).
 
@@ -70,10 +72,10 @@ class, for example:
 ```css
 .hyphae-fallback {
   background:
-    radial-gradient(30% 40% at 35% 45%, rgba(127, 242, 196, 0.16), transparent 70%),
-    radial-gradient(25% 35% at 68% 58%, rgba(127, 242, 196, 0.12), transparent 70%),
-    repeating-conic-gradient(from 10deg at 45% 50%, rgba(127, 242, 196, 0.05) 0 1deg, transparent 1deg 13deg),
-    #030605;
+    radial-gradient(30% 40% at 35% 45%, rgba(120, 200, 255, 0.14), transparent 70%),
+    radial-gradient(25% 35% at 68% 58%, rgba(255, 140, 210, 0.12), transparent 70%),
+    repeating-conic-gradient(from 10deg at 45% 50%, rgba(220, 220, 255, 0.05) 0 1deg, transparent 1deg 13deg),
+    #040406;
 }
 ```
 

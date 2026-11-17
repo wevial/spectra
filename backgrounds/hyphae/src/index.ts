@@ -15,7 +15,7 @@ export { PALETTES } from './params';
 export type { PaletteName } from './params';
 
 export const DEFAULTS = {
-  palette: 'foxfire' as PaletteName,
+  palette: 'spectral' as PaletteName,
   /** Nutrient patches, 1–8. More food, a busier web. */
   food: 5,
   /** Seconds for one patch to swell, fade and move on. */
@@ -74,6 +74,8 @@ const WARM_STEPS = 1500;
 /** Of which this many per frame. */
 const WARM_RATE = 50;
 const REVEAL_MS = 1500;
+/** Seconds of spores to batch into one pass. */
+const SPORE_EVERY = 0.25;
 const HALO_SIGMA = 2;
 const WIDE_SIGMA = 4;
 
@@ -155,6 +157,7 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
   let warm = 0;
   let reveal = 0;
   let grainClock = 0;
+  let sporeDue = 0; // seconds of spores owed
   let drawn = '';
 
   function reset() {
@@ -295,13 +298,16 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
       reveal = Math.min(1, reveal + rawDtMs / REVEAL_MS);
       if (config.grainPeriod > 0) grainClock += rawDtMs / 1000 / config.grainPeriod;
     }
-    if (elapsed > 0) {
-      time += elapsed;
+    time += elapsed;
+    sporeDue += elapsed;
+    if (sporeDue >= SPORE_EVERY) {
       // Spores: a few agents relocate at random. Without them (and moving
       // food) the network would shrink to a bare tree between the patches.
+      // Batched, since each pass rewrites every agent to move a handful.
       spore.use();
       gl.uniform1i(spore.uniforms.uAgents, agents!.read.attach(0));
-      gl.uniform1f(spore.uniforms.uChance, config.spores * elapsed);
+      gl.uniform1f(spore.uniforms.uChance, config.spores * sporeDue);
+      sporeDue = 0;
       gl.uniform1f(spore.uniforms.uSeed, (ticks * 7.31 + 0.5) % 1000);
       blit(agents!.write);
       agents!.swap();
