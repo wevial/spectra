@@ -19,8 +19,6 @@ export type PaletteName = keyof typeof PALETTES;
 
 export const MAX_PATCHES = 8;
 export const MAX_TAPS = 8;
-/** Taps across the prism's split, red to violet. */
-export const PRISM_BANDS = 13;
 
 /** sRGB hex to linear rgb. */
 export function hexToLinear(hex: string): [number, number, number] {
@@ -87,26 +85,4 @@ export function gaussianTaps(sigma: number) {
   }
   const pad = (v: number[]) => new Float32Array(v.concat(Array(MAX_TAPS - v.length).fill(0)));
   return { count: offsets.length, offsets: pad(offsets), weights: pad(weights) };
-}
-
-/**
- * The prism's band tints, red to violet: Oklch hues at a fixed lightness and
- * chroma, as linear rgb, packed vec3s. The shader normalizes them per
- * channel, so the bands together still make white.
- */
-export function prismBands(n = PRISM_BANDS) {
-  const out = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const h = 0.2 + (i / (n - 1)) * 4.6;
-    const [L, a, b] = [0.74, 0.17 * Math.cos(h), 0.17 * Math.sin(h)];
-    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-    out.set([
-      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-    ].map((v) => Math.max(v, 0)), i * 3);
-  }
-  return out;
 }

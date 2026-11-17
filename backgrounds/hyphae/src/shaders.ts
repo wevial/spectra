@@ -1,5 +1,5 @@
 import { NOISE, COLOR, GRAIN, RAINBOW } from '@spectra/core';
-import { MAX_PATCHES, MAX_TAPS, PRISM_BANDS } from './params';
+import { MAX_PATCHES, MAX_TAPS } from './params';
 
 // The agents, their sensing and stepping, and the scent's blur and
 // evaporation come from @spectra/mycelium. What's here: how the colony is
@@ -181,8 +181,7 @@ uniform float uGlow;
 uniform float uBright;
 uniform vec3 uGround;
 uniform float uPrism;
-uniform vec2 uSplit;  // dispersion, uv: red one way, violet the other
-uniform vec3 uBand[${PRISM_BANDS}];  // each tap's tint, red to violet
+uniform vec2 uSplit;  // dispersion, uv: red one way, blue the other
 out vec4 fragColor;
 ${NOISE}
 ${COLOR}
@@ -197,26 +196,24 @@ vec3 shoulder(vec3 c) {
   return mix(c, k + (1.0 - k) * (1.0 - exp(-(c - k) / (1.0 - k))), step(k, c));
 }
 
-// Prism: silver light split into a full spectrum. Taps across the split,
-// each tinted by its own hue from red to violet; each channel averages the
-// raw scent it sees, and only then goes through the strand curve, which
-// keeps the bands crisp instead of smearing them. Thin strands come apart
-// into side-by-side colors while wide hubs, where every tap agrees, stay
-// silver.
+// Prism: silver light split into a spectrum. Seven taps along the split,
+// each weighted by its band's color, so a strand's edges fan from red on
+// one side to blue on the other while its body stays silver.
 vec3 prism(vec2 uv) {
-  vec3 d = vec3(0.0), ws = vec3(0.0);
-  for (int i = 0; i < ${PRISM_BANDS}; i++) {
-    vec3 band = uBand[i];
-    d += band * texture(uField, uv + uSplit * (float(i) / ${PRISM_BANDS - 1}.0 - 0.5) * 2.0).r;
+  vec3 hz = vec3(0.0), st = vec3(0.0), co = vec3(0.0), ws = vec3(0.0);
+  for (int i = 0; i < 7; i++) {
+    float t = float(i) / 6.0;
+    vec3 band = max(vec3(1.0 - abs(t - 0.15) * 3.0, 1.0 - abs(t - 0.5) * 3.0, 1.0 - abs(t - 0.85) * 3.0), 0.0);
+    vec3 w = weights(uv + uSplit * (t - 0.5) * 2.0);
+    hz += band * w.x;
+    st += band * w.y;
+    co += band * w.z;
     ws += band;
   }
-  d *= uGain / ws;
   float food = clamp(texture(uFood, uv).z, 0.0, 1.0);
-  vec3 c = uHaze * smoothstep(0.02, 0.5, d) * 0.3
-         + uHypha * pow(smoothstep(0.06, 0.95, d), vec3(1.6)) * (0.4 + 0.8 * food)
-         + uTip * smoothstep(0.6, 1.3, d) * food;
+  vec3 c = (uHaze * hz + uHypha * st * (0.4 + 0.8 * food) + uTip * co * food) / ws;
   float grey = dot(c, vec3(0.3333));
-  return max(grey + (c - grey) * 2.0, 0.0); // let the split read as color
+  return max(grey + (c - grey) * 2.2, 0.0); // let the split read as color
 }
 
 void main() {
@@ -227,7 +224,7 @@ void main() {
   vec3 bloom;
   if (uPrism > 0.5) {
     // The glow disperses too, wider than the strands.
-    vec2 o = uSplit * 0.8;
+    vec2 o = uSplit * 2.5;
     bloom = vec3(texture(uHalo, vUv - o).r, texture(uHalo, vUv).g, texture(uHalo, vUv + o).b) * 0.3
           + vec3(texture(uWide, vUv - o * 2.0).r, texture(uWide, vUv).g, texture(uWide, vUv + o * 2.0).b) * 0.35;
   } else {

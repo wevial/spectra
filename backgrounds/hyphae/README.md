@@ -18,9 +18,8 @@ hyphae.destroy();
 ```
 
 Palettes: `spectral` (default), a rainbow that drifts across the plate;
-`prism`, silver light dispersed like through a prism, so thin strands come
-apart into side-by-side bands from red to violet while hubs stay silver,
-along a direction that turns slowly; `foxfire`,
+`prism`, silver strands whose edges split into a spectrum, red on one side
+and blue on the other, along a direction that turns slowly; `foxfire`,
 bioluminescent green; `ember`, warm orange; `spore`, violet; `frost`,
 silver-blue (see `PALETTES`). In the gallery, `?palette=<name>` picks one. `food`, `cycle`, `appetite`, `barren` and
 `spores` shape how restless the network is; the sim knobs match the cursor's.
