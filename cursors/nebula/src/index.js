@@ -9,7 +9,7 @@ import { Program, makeBlit, createStage, setGrain } from '@spectra/core';
 import { VERTEX, COMPOSITE } from './shaders.js';
 import { FluidSim, CONFIG } from './fluid.js';
 import { Governor, TIERS } from './perf.js';
-import { PAINTS } from './paints.js';
+import { PAINTS, GLOWS } from './paints.js';
 
 export { CONFIG, PAINTS };
 
@@ -130,8 +130,9 @@ export function mount(container, opts = {}) {
     const painted = fluid.config.look === 'paint';
     const paint = PAINTS[fluid.config.paint] ?? PAINTS.nebula;
     gl.uniform1f(composite.uniforms.uPaint, painted ? 1 : 0);
-    gl.uniform1f(composite.uniforms.uGlow, painted && paint.glow ? 1 : 0);
-    if (painted && paint.glow) setGrain(gl, composite.uniforms, 0.04, time / 2.5);
+    const glow = painted && paint.glow ? GLOWS.indexOf(paint.glow) + 1 : 0;
+    gl.uniform1f(composite.uniforms.uGlow, glow);
+    if (glow) setGrain(gl, composite.uniforms, 0.04, time / 2.5);
     if (fluid.config.paint !== paintName) {
       paintName = fluid.config.paint;
       fluid.config.ground = paint.ground;

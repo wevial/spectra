@@ -19,7 +19,7 @@ export interface NebulaConfig {
 }
 export const CONFIG: NebulaConfig;
 /** Paint-look palettes: inks for the gas's fringe, middle, core and hot core, over a ground. */
-export const PAINTS: Record<string, { inks: [string, string, string, string]; ground: string; glow?: boolean }>;
+export const PAINTS: Record<string, { inks: [string, string, string, string]; ground: string; glow?: 'inks' | 'prism' | 'rainbow' }>;
 export function mount(
   container: HTMLElement,
   opts?: {

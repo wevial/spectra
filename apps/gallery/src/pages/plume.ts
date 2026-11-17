@@ -2,10 +2,13 @@ import { mount, PAINTS } from '@spectra/plume';
 import { renderNav, panel } from '../shell';
 
 renderNav();
-// ?tier=0..4 locks a quality tier (4 = static fallback); ?perf logs the governor.
+// ?tier=0..4 locks a quality tier (4 = static fallback); ?perf logs the governor;
+// ?paint=<name> picks a palette.
 const params = new URLSearchParams(location.search);
 const tier = params.get('tier');
+const paint = params.get('paint');
 const fx = mount(document.getElementById('stage')!, {
+  paint: paint !== null && paint in PAINTS ? paint : undefined,
   tier: tier === null ? undefined : Number(tier),
   debug: params.has('perf'),
 });

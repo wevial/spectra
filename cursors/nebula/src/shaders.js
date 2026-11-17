@@ -1,4 +1,4 @@
-import { COLOR, GRAIN } from '@spectra/core';
+import { COLOR, GRAIN, RAINBOW } from '@spectra/core';
 
 // All GLSL lives here as template literals so the app runs without a bundler or fetch.
 
@@ -254,6 +254,7 @@ precision highp float;
 #define GLOW_BURN_LO 0.7
 #define GLOW_BURN_HI 1.5
 #define GLOW_WHITE 0.9
+#define PRISM_SPLIT 10.0
 in vec2 vUv;
 out vec4 outColor;
 uniform sampler2D uDye;
@@ -262,10 +263,11 @@ uniform float uAspect;
 uniform float uPaint;   // 1: paint look
 uniform vec3 uGround;   // paint look's ground color
 uniform vec3 uInk[4];   // paint look's inks: fringe, middle, core, hot core
-uniform float uGlow;    // 1: glow look
+uniform float uGlow;    // glow paints: 1 inks, 2 silver prism, 3 drifting rainbow
 ${NOISE_GLSL}
 ${COLOR}
 ${GRAIN}
+${RAINBOW}
 
 // Deep-space vertical gradient: near-black violet up top, a touch warmer low.
 const vec3 SKY_TOP = vec3(0.012, 0.004, 0.055);
@@ -330,17 +332,52 @@ vec3 paint(vec4 dye) {
   return col * (1.0 - dye.a * 0.35);
 }
 
-// Glow: the same inks, but emitted as light over a dark ground. Dense gas
-// burns toward white, dust lanes absorb, and film grain sits on top.
+// Glow: the gas emitted as light over a dark ground. Its color is the inks
+// (by the gas's hue), silver split into a spectrum at its edges, or a slow
+// rainbow drifting across the box. Dense gas burns toward white, dust lanes
+// absorb, and film grain sits on top.
+float dens(vec2 uv) {
+  vec3 c = texture(uDye, uv).rgb;
+  return max(max(c.r, c.g), c.b);
+}
+
 vec3 glow(vec4 dye) {
   float m = max(max(dye.r, dye.g), dye.b);
   vec3 n = dye.rgb / max(m, 1e-4);
-  float toMid = smoothstep(0.25, 0.57, n.r);
-  float toCore = smoothstep(0.6, 1.0, n.r);
-  float hot = smoothstep(0.45, 0.75, n.g) * toCore;
-  vec3 ink = mix(mix(uInk[0], uInk[1], toMid), uInk[2], toCore);
-  ink = toLinear(mix(ink, uInk[3], hot));
-  vec3 light = ink * pow(m, GLOW_CURVE) * GLOW_GAIN;
+  vec3 light;
+  if (uGlow > 2.5) {
+    // Rainbow: hue sweeps across the box and drifts, bent a little by the gas.
+    vec3 mid, high;
+    rainbow(uTime * 0.04 + dot(vUv, vec2(0.8, 0.45)) * 3.5 + n.r * 1.2, mid, high);
+    float L = pow(m, GLOW_CURVE) * GLOW_GAIN;
+    vec3 ink = max(fromOklab(mix(mid, high, smoothstep(0.0, 1.2, L))), 0.0);
+    light = ink * L * 1.6;
+  } else if (uGlow > 1.5) {
+    // Silver prism: the body stays silver; edges split into a spectrum.
+    vec2 px = 1.0 / vec2(textureSize(uDye, 0));
+    vec2 g = vec2(dens(vUv + vec2(px.x * 2.0, 0.0)) - dens(vUv - vec2(px.x * 2.0, 0.0)),
+                  dens(vUv + vec2(0.0, px.y * 2.0)) - dens(vUv - vec2(0.0, px.y * 2.0)));
+    vec2 dir = g / (length(g) + 1e-3) * px * PRISM_SPLIT;
+    // Seven samples along the gas's gradient, each weighted by its band's
+    // color, so edges fan out smoothly from red to blue.
+    vec3 sum = vec3(0.0), wsum = vec3(0.0);
+    for (int i = 0; i < 7; i++) {
+      float t = float(i) / 6.0;
+      vec3 w = max(vec3(1.0 - abs(t - 0.15) * 3.0, 1.0 - abs(t - 0.5) * 3.0, 1.0 - abs(t - 0.85) * 3.0), 0.0);
+      sum += w * pow(dens(vUv + dir * (t - 0.5) * 2.0), GLOW_CURVE);
+      wsum += w;
+    }
+    light = sum / wsum * GLOW_GAIN * 0.6 * vec3(0.9, 0.88, 0.86);
+    float grey = dot(light, vec3(0.3333));
+    light = max(grey + (light - grey) * 2.0, 0.0); // let the split read as color
+  } else {
+    float toMid = smoothstep(0.25, 0.57, n.r);
+    float toCore = smoothstep(0.6, 1.0, n.r);
+    float hot = smoothstep(0.45, 0.75, n.g) * toCore;
+    vec3 ink = mix(mix(uInk[0], uInk[1], toMid), uInk[2], toCore);
+    ink = toLinear(mix(ink, uInk[3], hot));
+    light = ink * pow(m, GLOW_CURVE) * GLOW_GAIN;
+  }
   float burn = smoothstep(GLOW_BURN_LO, GLOW_BURN_HI, m);
   light += burn * burn * GLOW_WHITE;
   light *= 1.0 - dye.a * 0.6;
