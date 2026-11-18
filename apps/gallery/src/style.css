@@ -111,7 +111,7 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
   touch-action: none;
 }
 
-/* Home: a live, hoverable preview of every effect, by kind. */
+/* Home: a looping preview of every effect, by kind; cursor effects go live on hover. */
 .sections {
   padding: 80px 16px 16px;
   max-width: 1400px;
@@ -138,6 +138,39 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
   color: var(--fg);
   text-decoration: none;
   background: #140f18;
+}
+/* Bottom to top: the live effect (hover), the poster, the preview video. */
+.card > img,
+.card > video,
+.card > .live {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.card > img,
+.card > video {
+  display: block;
+  object-fit: cover;
+  transition: opacity 0.25s;
+}
+.card > video { opacity: 0; }
+.card.playing > video { opacity: 1; }
+.card.live > img,
+.card.live > video { opacity: 0; }
+.nav .motion {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+}
+.nav .motion svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .card span {
   position: absolute;

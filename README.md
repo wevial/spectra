@@ -45,6 +45,7 @@ bun install
 bun run dev        # gallery at http://localhost:5173
 bun run typecheck
 bun test
+bun run capture    # re-record home-page previews (all, or name some)
 bun run build      # static site -> dist/
 bun run deploy     # build + wrangler deploy (Cloudflare)
 ```
@@ -63,7 +64,14 @@ apps/gallery    Vite multi-page site, one page per effect
 
 Adding an effect: create `cursors/<name>` (or `backgrounds/`) exporting `mount`, add
 `apps/gallery/<name>/index.html` and `src/pages/<name>.ts`, register it in
-`vite.config.ts` and `EFFECTS` in `src/shell.ts`.
+`vite.config.ts` and `src/effects.ts`, add its card to `index.html`, and record
+its preview with `bun run capture <name>`.
+
+The home page shows each effect as a recorded loop (`apps/gallery/public/previews`)
+and mounts the real one only while a cursor effect is hovered, so it never holds
+more than one WebGL context. `bun run capture` records them deterministically in
+headless Chromium (needs FFmpeg with libvpx and libx264); `bun test` checks every
+effect has one within budget.
 
 ## License
 

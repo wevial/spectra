@@ -55,6 +55,17 @@ export type MyceliumConfig = typeof DEFAULTS;
 
 /** Upper bound on grid cells (and so agents), for very large screens. */
 const MAX_CELLS = 1.2e6;
+/** Steps per frame while warming up. */
+const WARM_RATE = 40;
+
+export interface MyceliumOptions extends Partial<MyceliumConfig> {
+  /**
+   * Steps to grow the colony before it settles into real time, WARM_RATE a
+   * frame: a host that keeps the effect hidden that long can open on a
+   * grown network instead of the bloom.
+   */
+  warm?: number;
+}
 
 export interface MyceliumHandle {
   /** Live config: mutate fields and the next frame picks them up. */
@@ -74,7 +85,7 @@ function hexToRgb(hex: string): [number, number, number] {
  * Without WebGL2 + float targets the container gets the `mycelium-fallback`
  * class instead.
  */
-export function mount(container: HTMLElement, opts: Partial<MyceliumConfig> = {}): MyceliumHandle {
+export function mount(container: HTMLElement, { warm = 0, ...opts }: MyceliumOptions = {}): MyceliumHandle {
   const config: MyceliumConfig = { ...DEFAULTS, ...opts };
 
   let trail: Trail | null = null;
@@ -158,8 +169,12 @@ export function mount(container: HTMLElement, opts: Partial<MyceliumConfig> = {}
 
     // Fixed steps per second regardless of frame rate; reduced motion crawls.
     carry += (reducedMotion.matches ? 0.25 : config.steps) * dt * 60;
-    const steps = Math.min(Math.floor(carry), 8);
+    let steps = Math.min(Math.floor(carry), 8);
     carry -= steps;
+    if (warm > 0) {
+      steps = Math.min(warm, WARM_RATE);
+      warm -= steps;
+    }
 
     for (let i = 0; i < steps; i++) {
       step.use();

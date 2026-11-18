@@ -1,14 +1,9 @@
 import GUI from 'lil-gui';
 
-/** Every effect by kind: cursor effects react to the mouse, backgrounds don't. */
-export const GROUPS = {
-  cursors: ['glitch', 'dither', 'blackhole', 'lens', 'mycelium', 'nebula', 'aurora', 'riso', 'filings', 'film', 'wisp'],
-  backgrounds: ['haze', 'plume', 'caustics', 'ribbons', 'lava', 'hyphae'],
-} as const;
+import { GROUPS, LABELS } from './effects';
+import type { Effect } from './effects';
 
-export const EFFECTS = [...GROUPS.cursors, ...GROUPS.backgrounds];
-
-const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: 'black hole', film: 'rainbow film' };
+export { GROUPS, EFFECTS } from './effects';
 
 /**
  * The top bar: the brand, and on an effect page that effect's name, which
@@ -17,7 +12,7 @@ const LABELS: Partial<Record<(typeof EFFECTS)[number], string>> = { blackhole: '
  */
 export function renderNav() {
   const nav = document.querySelector<HTMLElement>('.nav')!;
-  const current = nav.dataset.current as (typeof EFFECTS)[number] | 'home';
+  const current = nav.dataset.current as Effect | 'home';
   if (current === 'home') {
     nav.innerHTML = `<a class="brand" href="/" aria-current="page">spectra</a>`;
     return;

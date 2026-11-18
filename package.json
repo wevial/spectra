@@ -14,7 +14,8 @@
     "preview": "bun --filter @spectra/gallery preview",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "deploy": "bun run build && wrangler deploy"
+    "deploy": "bun run build && wrangler deploy",
+    "capture": "bun --filter @spectra/gallery capture --"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",

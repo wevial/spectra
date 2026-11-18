@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "capture": "bun scripts/capture.ts"
   },
   "dependencies": {
     "@spectra/core": "workspace:*",
@@ -29,6 +30,7 @@
     "lil-gui": "^0.20.0"
   },
   "devDependencies": {
+    "playwright-core": "^1.65.0",
     "vite": "^7.1.0"
   }
 }
