@@ -25,7 +25,7 @@ let time = 0;
 /** A figure eight through the middle, closed after `period` seconds. */
 function path(t: number) {
   const a = (t / setup.period) * Math.PI * 2;
-  return { x: 0.5 + 0.3 * Math.sin(a), y: 0.5 + 0.2 * Math.sin(2 * a) };
+  return { x: 0.5 + 0.24 * Math.sin(a), y: 0.5 + 0.16 * Math.sin(2 * a) };
 }
 
 function step(dt: number) {
