@@ -7,18 +7,22 @@
 // - Reduced motion, Save-Data and failed playback leave the poster up; the
 //   nav button pauses every preview.
 // - With a mouse, dwelling on a card mounts the real effect beneath its video
-//   and crossfades to it once it has drawn. Leaving fades the video back in,
-//   then destroys the effect. At most one live context exists at a time.
+//   and crossfades to it once it has drawn. A cursor effect's pointer starts
+//   where the video's is and glides to the mouse. Leaving fades the video
+//   back in, then destroys the effect. At most one live context at a time.
 
 import { renderNav } from '../shell';
-import { LOADERS, PREVIEW } from '../effects';
+import { LOADERS, PREVIEW, previewPath } from '../effects';
+import { PATH_START } from '../preview-paths';
 import type { Effect } from '../effects';
 
 renderNav();
 
 const MAX_PLAYING = 3;
 const DWELL_MS = 120;
-const FADE_MS = 250; // the media crossfade in style.css
+const FADE_MS = 400; // the media crossfade in style.css
+const GLIDE_MS = 500; // live pointer, from the video's path to the mouse
+const STEER_FRAMES = 12;
 
 /** Seconds a fresh mount needs to look like its preview (mount fades). */
 const READY_S: Partial<Record<Effect, number>> = {
@@ -51,6 +55,7 @@ interface Live {
   host: HTMLElement;
   handle: { destroy(): void };
   shown: boolean;
+  covered: boolean; // shown and faded in: its video can stop
   timer: number;
 }
 
@@ -97,7 +102,7 @@ function update() {
     const r = c.el.getBoundingClientRect();
     return Math.abs(r.top + r.height / 2 - mid);
   };
-  const eligible = (c: Card) => !c.failed && !(live?.shown && live.card === c);
+  const eligible = (c: Card) => !c.failed && !(live?.covered && live.card === c);
   const play = motion
     ? cards.filter((c) => c.ratio > 0 && eligible(c))
       .sort((a, b) => b.ratio - a.ratio || centre(a) - centre(b))
@@ -173,6 +178,13 @@ if (!saveData) {
 let dwell = 0;
 let gen = 0; // bumped on every enter/leave; a mount that resolves stale is dropped
 let last = { x: 0, y: 0 };
+let steering: Live | null = null; // its pointer is driven from here, not by the mouse
+
+window.addEventListener('pointermove', (e) => {
+  if (!steering || !e.isTrusted) return;
+  last = { x: e.clientX, y: e.clientY };
+  e.stopImmediatePropagation();
+}, { capture: true });
 
 for (const c of cards) {
   c.el.addEventListener('pointerenter', (e) => {
@@ -216,14 +228,16 @@ async function goLive(c: Card, my: number) {
   const host = document.createElement('div');
   host.className = 'live';
   c.el.prepend(host);
-  const entry: Live = { card: c, host, handle: mount(host, HOVER[c.effect]?.opts), shown: false, timer: 0 };
+  const entry: Live = { card: c, host, handle: mount(host, HOVER[c.effect]?.opts), shown: false, covered: false, timer: 0 };
   live = entry;
-  // The stage only hears pointer moves; hand it where the mouse already is.
-  dispatchEvent(new PointerEvent('pointermove', { clientX: last.x, clientY: last.y, pointerType: 'mouse' }));
+  const start = PATH_START[c.effect];
+  if (start !== undefined) steer(entry, start);
+  else pointAt(last.x, last.y); // the stage only hears moves; hand it where the mouse is
 
   const ready = performance.now() + (READY_S[c.effect] ?? 0) * 1000;
-  // Frame 1 can predate fonts and sizing; wait for the second at least.
-  const frames = HOVER[c.effect]?.frames ?? 2;
+  // Frame 1 can predate fonts and sizing; wait for the second at least. A
+  // steered pointer needs a few more for the effect's easing to catch up.
+  const frames = HOVER[c.effect]?.frames ?? (start === undefined ? 2 : STEER_FRAMES);
   host.addEventListener('stageframe', function onFrame(e) {
     if ((e as CustomEvent<number>).detail < frames || performance.now() < ready) return;
     host.removeEventListener('stageframe', onFrame);
@@ -238,14 +252,50 @@ function show(e: Live) {
   e.shown = true;
   e.card.el.classList.remove('loading');
   e.card.el.classList.add('live');
-  e.card.video.pause();
-  update();
+  // The video keeps playing while it fades out; a frozen frame would ghost.
+  clearTimeout(e.timer);
+  e.timer = window.setTimeout(() => { e.covered = true; update(); }, FADE_MS);
+}
+
+function pointAt(clientX: number, clientY: number) {
+  dispatchEvent(new PointerEvent('pointermove', { clientX, clientY, pointerType: 'mouse' }));
+}
+
+/**
+ * Drive a cursor effect's pointer along its preview's path, in step with the
+ * video, while it loads unseen; once shown, glide it to the mouse.
+ */
+function steer(e: Live, start: number) {
+  steering = e;
+  let from: { x: number; y: number } | null = null;
+  let t0 = 0;
+  const frame = (now: number) => {
+    if (live !== e) {
+      if (steering === e) steering = null;
+      return;
+    }
+    const r = e.host.getBoundingClientRect();
+    let p = previewPath(start + e.card.video.currentTime);
+    if (e.shown) {
+      from ??= p;
+      t0 ||= now;
+      const k = Math.min(1, (now - t0) / GLIDE_MS);
+      const s = k * k * (3 - 2 * k);
+      const to = { x: (last.x - r.left) / r.width, y: 1 - (last.y - r.top) / r.height };
+      p = { x: from.x + (to.x - from.x) * s, y: from.y + (to.y - from.y) * s };
+      if (k === 1) steering = null;
+    }
+    pointAt(r.left + p.x * r.width, r.top + (1 - p.y) * r.height);
+    if (steering === e) requestAnimationFrame(frame);
+  };
+  frame(performance.now());
 }
 
 /** Fade the preview back in over the effect, then destroy the effect. */
 function release() {
   const e = live!;
   live = null;
+  clearTimeout(e.timer);
   e.card.el.classList.remove('live');
   update();
   if (!e.shown) return finish(e);

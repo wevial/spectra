@@ -5,7 +5,7 @@
 
 import { driveStagesManually, seedRandom } from '@spectra/core';
 import type { Stage } from '@spectra/core';
-import { LOADERS, isCursor } from './effects';
+import { LOADERS, isCursor, previewPath } from './effects';
 import type { Effect } from './effects';
 
 export interface CaptureSetup {
@@ -14,24 +14,16 @@ export interface CaptureSetup {
   height: number;
   dpr: number;
   seed: number;
-  /** Seconds the cursor path takes to close; the loop length. */
-  period: number;
 }
 
 let stage: Stage;
 let setup: CaptureSetup;
 let time = 0;
 
-/** A figure eight through the middle, closed after `period` seconds. */
-function path(t: number) {
-  const a = (t / setup.period) * Math.PI * 2;
-  return { x: 0.5 + 0.24 * Math.sin(a), y: 0.5 + 0.16 * Math.sin(2 * a) };
-}
-
 function step(dt: number) {
   if (isCursor(setup.effect)) {
     const p = stage.pointer;
-    const { x, y } = path(time);
+    const { x, y } = previewPath(time);
     if (p.active) {
       p.dx += x - p.x;
       p.dy += y - p.y;

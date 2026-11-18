@@ -47,4 +47,12 @@ export const PREVIEW = {
   fps: 30,
   /** Largest each video may be, bytes. */
   maxBytes: 500_000,
+  /** Seconds a cursor preview's pointer path takes to close; its loop length. */
+  period: 6,
 } as const;
+
+/** The pointer in a cursor preview, `t` seconds into its path: a figure eight through the middle (uv, y up). */
+export function previewPath(t: number) {
+  const a = (t / PREVIEW.period) * Math.PI * 2;
+  return { x: 0.5 + 0.24 * Math.sin(a), y: 0.5 + 0.16 * Math.sin(2 * a) };
+}

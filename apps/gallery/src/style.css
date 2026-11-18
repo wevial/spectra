@@ -152,7 +152,7 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
 .card > video {
   display: block;
   object-fit: cover;
-  transition: opacity 0.25s;
+  transition: opacity 0.4s ease-in-out;
 }
 .card > video { opacity: 0; }
 .card.playing > video { opacity: 1; }

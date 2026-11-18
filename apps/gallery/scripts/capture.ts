@@ -25,6 +25,7 @@ import { join } from 'node:path';
 import { EFFECTS, PREVIEW, isCursor } from '../src/effects';
 import type { Effect } from '../src/effects';
 import type { CaptureSetup } from '../src/capture';
+import { PATH_START } from '../src/preview-paths';
 
 const ROOT = join(import.meta.dir, '..');
 const OUT = join(ROOT, 'public', PREVIEW.dir);
@@ -33,7 +34,7 @@ const CSS = { width: 448, height: 280 }; // a home card at the gallery's widest
 const DPR = PREVIEW.width / CSS.width;
 const SIM_FPS = 60;
 const STEPS = SIM_FPS / PREVIEW.fps;  // sim steps per video frame
-const PERIOD = 6;                     // seconds for the cursor path to close
+const PERIOD = PREVIEW.period;        // seconds for the cursor path to close
 const LENGTHS = [4, 6];               // seconds a background loop may last
 const OVERLAP = 1.5;                  // seconds crossfaded into the start
 const SEARCH = 8;                     // extra seconds recorded to find a good cut
@@ -139,7 +140,7 @@ async function main() {
       page.on('pageerror', (e) => console.error(`[${effect}] ${e.message}`));
       await page.goto(new URL('capture.html', url).href);
       await page.waitForFunction(() => 'capture' in window);
-      const setup: CaptureSetup = { effect, ...CSS, dpr: DPR, seed: SEED, period: PERIOD };
+      const setup: CaptureSetup = { effect, ...CSS, dpr: DPR, seed: SEED };
       const size = await page.evaluate((s) => window.capture.mount(s), setup);
       if (size.width !== PREVIEW.width || size.height !== PREVIEW.height) {
         throw new Error(`${effect}: drawing buffer is ${size.width}x${size.height}`);
@@ -158,6 +159,7 @@ async function main() {
       }
 
       const cut = findCut(frames, isCursor(effect));
+      if (isCursor(effect)) PATH_START[effect] = +(((warm / SIM_FPS) + cut.start / PREVIEW.fps) % PERIOD).toFixed(3);
       const { loop, blend, jump } = closeLoop(frames, cut, !GLOBAL_DISSOLVE.has(effect));
       const raw = join(tmp, `${effect}.rgba`);
       await Bun.write(raw, concat(loop));
@@ -187,6 +189,7 @@ async function main() {
       ].join('  '));
       console.log(report.at(-1));
     }
+    await writePaths();
   } finally {
     await browser.close();
     await server.close();
@@ -324,3 +327,17 @@ async function encode(raw: string, out: string, codec: Codec, seconds: number, t
 
 // Last, so every helper and constant above is initialised.
 await main();
+
+/** Where each cursor loop starts on its pointer path, for the home page to pick up from. */
+async function writePaths() {
+  const rows = EFFECTS.filter((e) => PATH_START[e] !== undefined).map((e) => `  ${e}: ${PATH_START[e]},`);
+  await Bun.write(join(ROOT, 'src', 'preview-paths.ts'), `// Written by scripts/capture.ts: seconds into the pointer path (previewPath)
+// at which each cursor preview's loop starts.
+
+import type { Effect } from './effects';
+
+export const PATH_START: Partial<Record<Effect, number>> = {
+${rows.join('\n')}
+};
+`);
+}
