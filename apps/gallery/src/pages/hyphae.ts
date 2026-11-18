@@ -6,10 +6,13 @@ renderNav();
 const page = surface();
 // ?palette=<name> picks a palette, so each has its own link.
 const palette = new URLSearchParams(location.search).get('palette');
-const fx = mount(document.getElementById('stage')!, {
+const stage = document.getElementById('stage')!;
+const open = (transparent: boolean, warm?: number) => mount(stage, {
   ...(palette !== null && palette in PALETTES ? { palette: palette as PaletteName } : {}),
-  transparent: page.transparent,
+  transparent,
+  warm,
 });
+let fx = open(page.transparent);
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -43,5 +46,6 @@ panel((gui) => {
   growth.add(c, 'decay', 0.5, 0.99, 0.005);
   growth.add({ reset: () => fx.reset() }, 'reset').name('regrow');
 
-  page.add(gui);
+  // Remounting regrows the colony: grow it unseen for 14 s so it doesn't restart bare.
+  page.add(gui, fx, (transparent) => (fx = open(transparent, 14 * 60)));
 });

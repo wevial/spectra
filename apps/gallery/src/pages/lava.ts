@@ -3,7 +3,9 @@ import { renderNav, panel, surface } from '../shell';
 
 renderNav();
 const page = surface();
-const fx = mount(document.getElementById('stage')!, { transparent: page.transparent });
+const stage = document.getElementById('stage')!;
+const open = (transparent: boolean) => mount(stage, { transparent });
+let fx = open(page.transparent);
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -22,5 +24,5 @@ panel((gui) => {
   finish.add(c, 'grain', 0, 0.5, 0.01);
   finish.add(c, 'grainPeriod', 0, 10, 0.1).name('grain morph (s)');
 
-  page.add(gui);
+  page.add(gui, fx, (transparent) => (fx = open(transparent)));
 });

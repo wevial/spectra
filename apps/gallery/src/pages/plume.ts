@@ -8,12 +8,14 @@ const page = surface();
 const params = new URLSearchParams(location.search);
 const tier = params.get('tier');
 const paint = params.get('paint');
-const fx = mount(document.getElementById('stage')!, {
+const stage = document.getElementById('stage')!;
+const open = (transparent: boolean) => mount(stage, {
   paint: paint !== null && paint in PAINTS ? paint : undefined,
   tier: tier === null ? undefined : Number(tier),
   debug: params.has('perf'),
-  transparent: page.transparent,
+  transparent,
 });
+let fx = open(page.transparent);
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -27,5 +29,5 @@ panel((gui) => {
   gui.add(c, 'speed', 0, 5, 0.05).name('drift');
   gui.add(c, 'offsetDecay', 0.1, 4, 0.05).name('heal rate');
 
-  page.add(gui);
+  page.add(gui, fx, (transparent) => (fx = open(transparent)));
 });

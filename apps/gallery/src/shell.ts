@@ -36,34 +36,51 @@ export function renderNav() {
 
 const surfaceState = { transparent: false, page: 'dark' as 'dark' | 'light' };
 
+/** How long a remounted effect overlaps the one it replaces, so it fades in over it instead of over nothing. */
+const REMOUNT_OVERLAP_MS = 1200;
+
+interface Handle {
+  config: object;
+  destroy(): void;
+}
+
 /**
  * The page under a background, for judging it on dark and light pages.
  * `?transparent` mounts the effect over the page instead of its own ground;
  * `?page=light` puts a light page behind it. Returns the mount option, and
- * `add(gui)` for the toggles: the page color switches live, transparency
- * reloads, since it's fixed at mount.
+ * `add(gui, fx, remount)` for the toggles: the page color switches live;
+ * transparency is fixed at mount, so toggling it mounts the effect again with
+ * `remount`, carries the live config over, points the panel at it, and drops
+ * the old one once the new one has faded in.
  */
 export function surface() {
   const params = new URLSearchParams(location.search);
   surfaceState.transparent = params.has('transparent');
   surfaceState.page = params.get('page') === 'light' ? 'light' : 'dark';
   const apply = () => { document.documentElement.dataset.page = surfaceState.page; };
-  const setParam = (key: string, on: boolean, value = '') => {
+  const setParam = (key: string, value: string | null) => {
     const url = new URL(location.href);
-    if (on) url.searchParams.set(key, value);
-    else url.searchParams.delete(key);
-    return url;
+    if (value === null) url.searchParams.delete(key);
+    else url.searchParams.set(key, value);
+    history.replaceState(null, '', url);
   };
   apply();
   return {
     transparent: surfaceState.transparent,
-    add(gui: GUI) {
+    add<H extends Handle>(gui: GUI, fx: H, remount: (transparent: boolean) => H) {
+      let current = fx;
       const page = gui.addFolder('page');
       page.add(surfaceState, 'transparent').onChange((on: boolean) => {
-        location.href = setParam('transparent', on).href;
+        const old = current;
+        current = remount(on);
+        (window as unknown as { fx: H }).fx = current;
+        Object.assign(current.config, old.config);
+        for (const c of gui.controllersRecursive()) if (c.object === old.config) c.object = current.config;
+        setTimeout(() => old.destroy(), REMOUNT_OVERLAP_MS);
+        setParam('transparent', on ? '1' : null);
       });
       page.add(surfaceState, 'page', ['dark', 'light']).name('color').onChange((color: string) => {
-        history.replaceState(null, '', setParam('page', color === 'light', 'light'));
+        setParam('page', color === 'light' ? 'light' : null);
         apply();
       });
     },
