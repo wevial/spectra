@@ -86,7 +86,16 @@ const WIDE_SIGMA = 4;
  * Without WebGL2 + float targets the container gets the `hyphae-fallback`
  * class instead.
  */
-export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}): HyphaeHandle {
+export interface HyphaeOptions extends Partial<HyphaeConfig> {
+  /**
+   * Steps to grow the colony unseen before it settles into real time,
+   * WARM_RATE a frame, then appear at once without the fade: a host that
+   * keeps the effect hidden that long can open on a grown network.
+   */
+  warm?: number;
+}
+
+export function mount(container: HTMLElement, { warm: ahead = 0, ...opts }: HyphaeOptions = {}): HyphaeHandle {
   const config: HyphaeConfig = { ...DEFAULTS, ...opts };
 
   let onResize = () => {};
@@ -290,6 +299,12 @@ export function mount(container: HTMLElement, opts: Partial<HyphaeConfig> = {}):
       const key = JSON.stringify(config);
       if (!steps && key === drawn) return;
       drawn = warm ? '' : key;
+    } else if (ahead > 0) {
+      warm = 0;
+      steps = Math.min(ahead, WARM_RATE);
+      elapsed = steps / 60 / Math.max(config.speed, 0.01);
+      ahead -= steps;
+      reveal = ahead ? 0 : 1;
     } else {
       warm = 0;
       elapsed = dt;

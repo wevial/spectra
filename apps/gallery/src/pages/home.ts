@@ -22,12 +22,13 @@ const FADE_MS = 250; // the media crossfade in style.css
 
 /** Seconds a fresh mount needs to look like its preview (mount fades). */
 const READY_S: Partial<Record<Effect, number>> = {
-  haze: 0.8, caustics: 1, lava: 1, ribbons: 1.3, hyphae: 2.2,
+  haze: 0.8, caustics: 1, lava: 1, ribbons: 1.3,
 };
 
-/** Mount options on hover: mycelium grows its network out of sight (24 frames) instead of blooming. */
+/** Mount options on hover: sims grow their network out of sight (`warm` steps, 40–50 a frame) instead of starting from seed. */
 const HOVER: Partial<Record<Effect, { opts: object; frames: number }>> = {
   mycelium: { opts: { warm: 960 }, frames: 26 },
+  hyphae: { opts: { warm: 840 }, frames: 19 },
 };
 
 
@@ -67,6 +68,7 @@ const byEl = new Map(cards.map((c) => [c.el as Element, c]));
 let paused = readPaused();
 let live: Live | null = null;
 let leaving: Live | null = null;
+let hovered: Card | null = null; // under the mouse: its preview plays while the effect loads
 
 // --- previews -------------------------------------------------------------
 
@@ -95,11 +97,14 @@ function update() {
     const r = c.el.getBoundingClientRect();
     return Math.abs(r.top + r.height / 2 - mid);
   };
+  const eligible = (c: Card) => !c.failed && !(live?.shown && live.card === c);
   const play = motion
-    ? cards.filter((c) => c.ratio > 0 && !c.failed && !(live?.shown && live.card === c))
+    ? cards.filter((c) => c.ratio > 0 && eligible(c))
       .sort((a, b) => b.ratio - a.ratio || centre(a) - centre(b))
       .slice(0, MAX_PLAYING)
     : [];
+  // A hovered card never sits frozen while its effect loads, cap or pause aside.
+  if (hovered && eligible(hovered) && !reduced.matches && !saveData && !play.includes(hovered)) play.push(hovered);
   for (const c of cards) {
     if (play.includes(c)) {
       attach(c);
@@ -173,6 +178,8 @@ for (const c of cards) {
   c.el.addEventListener('pointerenter', (e) => {
     if (e.pointerType !== 'mouse' || !mouse.matches) return;
     last = { x: e.clientX, y: e.clientY };
+    hovered = c;
+    update();
     void LOADERS[c.effect](); // start fetching during the dwell
     clearTimeout(dwell);
     const my = ++gen;
@@ -183,7 +190,10 @@ for (const c of cards) {
     if (e.pointerType !== 'mouse') return;
     clearTimeout(dwell);
     gen++;
+    if (hovered === c) hovered = null;
+    c.el.classList.remove('loading');
     if (live?.card === c) release();
+    else update();
   });
 }
 
@@ -196,6 +206,7 @@ async function goLive(c: Card, my: number) {
     show(live);
     return;
   }
+  c.el.classList.add('loading');
   const { mount } = await LOADERS[c.effect]();
   if (my !== gen) return;
   // One live context at most: whatever is fading out goes first.
@@ -219,10 +230,13 @@ async function goLive(c: Card, my: number) {
     if (live === entry) show(entry);
   });
   host.addEventListener('stagelost', () => { if (live === entry) release(); }, { once: true });
+  // No WebGL2: the stage never draws, so there is nothing to wait for.
+  if (!host.querySelector('canvas')) c.el.classList.remove('loading');
 }
 
 function show(e: Live) {
   e.shown = true;
+  e.card.el.classList.remove('loading');
   e.card.el.classList.add('live');
   e.card.video.pause();
   update();
@@ -246,6 +260,7 @@ function finish(e: Live) {
     live = null;
     e.card.el.classList.remove('live');
   }
+  e.card.el.classList.remove('loading');
   e.handle.destroy();
   e.host.remove();
 }

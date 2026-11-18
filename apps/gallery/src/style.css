@@ -158,6 +158,25 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
 .card.playing > video { opacity: 1; }
 .card.live > img,
 .card.live > video { opacity: 0; }
+/* Loading the live effect: a small ring in the label, shown only if it takes a moment. */
+.card span { display: flex; align-items: center; gap: 8px; }
+.card span::after {
+  content: '';
+  display: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(236, 230, 242, 0.25);
+  border-top-color: var(--fg);
+  opacity: 0;
+  animation: spin 0.7s linear infinite, appear 0.2s 0.15s forwards;
+}
+.card.loading span::after { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes appear { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .card span::after { animation: appear 0.2s 0.15s forwards; }
+}
 .nav .motion {
   display: flex;
   align-items: center;
