@@ -111,7 +111,7 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
   touch-action: none;
 }
 
-/* Home: a looping preview of every effect, by kind; cursor effects go live on hover. */
+/* Home: a looping preview of every effect, by kind; each goes live on hover. */
 .sections {
   padding: 80px 16px 16px;
   max-width: 1400px;

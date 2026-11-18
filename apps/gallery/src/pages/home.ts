@@ -11,7 +11,7 @@
 //   then destroys the effect. At most one live context exists at a time.
 
 import { renderNav } from '../shell';
-import { LOADERS, isCursor, PREVIEW } from '../effects';
+import { LOADERS, PREVIEW } from '../effects';
 import type { Effect } from '../effects';
 
 renderNav();
@@ -30,9 +30,6 @@ const HOVER: Partial<Record<Effect, { opts: object; frames: number }>> = {
   mycelium: { opts: { warm: 960 }, frames: 26 },
 };
 
-// Backgrounds take no input, so by default only cursor effects go live on
-// hover. `?live=all` makes every card go live, for comparison.
-const liveAll = new URLSearchParams(location.search).get('live') === 'all';
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const mouse = matchMedia('(hover: hover) and (pointer: fine)');
@@ -172,11 +169,9 @@ let dwell = 0;
 let gen = 0; // bumped on every enter/leave; a mount that resolves stale is dropped
 let last = { x: 0, y: 0 };
 
-const canGoLive = (c: Card) => liveAll || isCursor(c.effect);
-
 for (const c of cards) {
   c.el.addEventListener('pointerenter', (e) => {
-    if (e.pointerType !== 'mouse' || !mouse.matches || !canGoLive(c)) return;
+    if (e.pointerType !== 'mouse' || !mouse.matches) return;
     last = { x: e.clientX, y: e.clientY };
     void LOADERS[c.effect](); // start fetching during the dwell
     clearTimeout(dwell);

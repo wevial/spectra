@@ -68,7 +68,7 @@ Adding an effect: create `cursors/<name>` (or `backgrounds/`) exporting `mount`,
 its preview with `bun run capture <name>`.
 
 The home page shows each effect as a recorded loop (`apps/gallery/public/previews`)
-and mounts the real one only while a cursor effect is hovered, so it never holds
+and mounts the real one only while its card is hovered, so it never holds
 more than one WebGL context. `bun run capture` records them deterministically in
 headless Chromium (needs FFmpeg with libvpx and libx264); `bun test` checks every
 effect has one within budget.
