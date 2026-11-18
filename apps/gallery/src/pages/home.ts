@@ -87,7 +87,7 @@ function attach(c: Card) {
     c.el.classList.remove('playing');
     update();
   });
-  c.video.preload = 'auto';
+  c.video.preload = 'metadata'; // play() fetches the rest; cards left paused show their poster
   c.video.load();
 }
 
