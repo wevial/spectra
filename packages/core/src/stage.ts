@@ -46,6 +46,13 @@ export interface StageOptions {
   adaptive?: boolean;
   /** GPU ms per frame the adaptive resolution aims to stay under (default 6). */
   budgetMs?: number;
+  /**
+   * Draw over the page instead of an opaque ground: the context gets a
+   * premultiplied alpha channel, and effects end with GRAIN's or
+   * TRANSPARENT's `overPage` so unlit pixels let the page through.
+   * Default false.
+   */
+  transparent?: boolean;
   /** Class put on the container when WebGL2 is unavailable or the context is lost. */
   fallback?: string;
   onResize?: () => void;
@@ -75,7 +82,8 @@ export function createStage(container: HTMLElement, opts: StageOptions = {}): St
   container.appendChild(canvas);
 
   const context = canvas.getContext('webgl2', {
-    alpha: false,
+    alpha: !!opts.transparent,
+    premultipliedAlpha: true,
     depth: false,
     stencil: false,
     antialias: false,

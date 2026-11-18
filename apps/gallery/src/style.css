@@ -104,6 +104,9 @@ body:has(.menu:popover-open) .nav .current svg { transform: rotate(180deg); }
 .menu a:focus-visible { color: var(--fg); background: rgba(236, 230, 242, 0.06); outline: none; }
 .menu a[aria-current='page'] { color: var(--fg); background: rgba(236, 230, 242, 0.1); }
 
+/* The light page a background can be judged on (see `surface` in shell.ts). */
+:root[data-page='light'] { --bg: #f6f5fa; }
+
 /* Full-viewport effect page. */
 .stage {
   position: fixed;

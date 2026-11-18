@@ -38,6 +38,12 @@ No cursor.
 Every effect exports `mount(container, options) → { config, destroy }`. `config`
 is live: change a field and the next frame uses it.
 
+Backgrounds also take `transparent: true` (fixed at mount): instead of painting
+their own ground they draw over whatever page sits behind the canvas, with
+alpha from the light at each pixel. On a dark page they look the same; on a
+light one their colors tint it (white light on a white page vanishes). The
+gallery's `page` folder toggles it and switches the page between dark and light.
+
 ## Run
 
 ```sh

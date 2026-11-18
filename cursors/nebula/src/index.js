@@ -5,7 +5,7 @@
 // With `cursor: false` it's a background: the pointer is ignored, and a few
 // invisible wanderers push slow currents through the same sim instead.
 
-import { Program, makeBlit, createStage, setGrain, random } from '@spectra/core';
+import { Program, makeBlit, createStage, setGrain, setTransparent, random } from '@spectra/core';
 import { VERTEX, COMPOSITE } from './shaders.js';
 import { FluidSim, CONFIG } from './fluid.js';
 import { Governor, TIERS } from './perf.js';
@@ -17,8 +17,10 @@ export { CONFIG, PAINTS };
  * Mount the nebula into `container` (which should be positioned and sized).
  * Without WebGL2 + float targets the container gets the `nebula-fallback`
  * class instead, for a static CSS gradient.
+ * `transparent` draws the paint looks over the page instead of their ground
+ * (fixed at mount); the space look stays opaque.
  * @param {HTMLElement} container
- * @param {{ tier?: number, debug?: boolean, cursor?: boolean, currents?: number, speed?: number, look?: 'space' | 'paint', paint?: string, ground?: string }} [opts]
+ * @param {{ tier?: number, debug?: boolean, cursor?: boolean, currents?: number, speed?: number, look?: 'space' | 'paint', paint?: string, ground?: string, transparent?: boolean }} [opts]
  */
 export function mount(container, opts = {}) {
   const cursor = opts.cursor ?? true;
@@ -29,6 +31,7 @@ export function mount(container, opts = {}) {
     fallback: 'nebula-fallback',
     // Nebula's own governor trades detail as well as resolution (perf.js).
     adaptive: false,
+    transparent: opts.transparent,
     onResize: () => fluid?.resize(),
   });
   if (!stage) {
@@ -134,11 +137,13 @@ export function mount(container, opts = {}) {
     const glow = painted && paint.glow ? GLOWS.indexOf(paint.glow) + 1 : 0;
     gl.uniform1f(composite.uniforms.uGlow, glow);
     if (glow) setGrain(gl, composite.uniforms, 0.04, time / 2.5);
+    else setTransparent(gl, composite.uniforms);
     if (fluid.config.paint !== paintName) {
       paintName = fluid.config.paint;
       fluid.config.ground = paint.ground;
     }
-    gl.uniform3fv(composite.uniforms.uGround, hex(fluid.config.ground));
+    // A glow over black, or ink over the page: either way a transparent stage has no ground.
+    gl.uniform3fv(composite.uniforms.uGround, opts.transparent ? [0, 0, 0] : hex(fluid.config.ground));
     gl.uniform3fv(composite.uniforms['uInk[0]'], paint.inks.flatMap(hex));
     blit(null);
   });

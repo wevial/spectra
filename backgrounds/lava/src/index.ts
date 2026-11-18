@@ -43,6 +43,14 @@ export const DEFAULTS = {
 
 export type LavaConfig = typeof DEFAULTS;
 
+export interface LavaOptions extends Partial<LavaConfig> {
+  /**
+   * Draw over the page instead of the liquid: unlit areas are see-through and
+   * the light tints whatever is behind the canvas. Fixed at mount. Default false.
+   */
+  transparent?: boolean;
+}
+
 export interface LavaHandle {
   /** Live config: mutate fields and the next frame picks them up. */
   config: LavaConfig;
@@ -68,11 +76,11 @@ function hexToRgb(hex: string): [number, number, number] {
  * Mount the effect into `container` (which should be positioned and sized).
  * Without WebGL2 + float targets the container gets the `lava-fallback` class instead.
  */
-export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): LavaHandle {
+export function mount(container: HTMLElement, { transparent = false, ...opts }: LavaOptions = {}): LavaHandle {
   const config: LavaConfig = { ...DEFAULTS, ...opts };
 
   let drawn = '';
-  const stage = createStage(container, { fallback: 'lava-fallback', floatTargets: true, onResize: () => { drawn = ''; } });
+  const stage = createStage(container, { fallback: 'lava-fallback', floatTargets: true, transparent, onResize: () => { drawn = ''; } });
   if (!stage) {
     return { config, measure: () => null, advance() {}, destroy() {} };
   }
@@ -122,6 +130,7 @@ export function mount(container: HTMLElement, opts: Partial<LavaConfig> = {}): L
         ? [RAINBOW_LIQUID, RAINBOW_LIQUID, RAINBOW_LIQUID]
         : PALETTES[config.palette as keyof typeof PALETTES] ?? PALETTES.magma;
       const [liquid, deep, hot] = hex.map(hexToRgb);
+      if (transparent) liquid.fill(0); // the page is the liquid
       colors = { liquid, deep, hot };
     }
     fluid.render(colors, config.glow, 1 - Math.pow(1 - reveal, 3), mode, grain);

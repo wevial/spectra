@@ -1,8 +1,9 @@
 import { mount, PALETTES } from '@spectra/caustics';
-import { renderNav, panel } from '../shell';
+import { renderNav, panel, surface } from '../shell';
 
 renderNav();
-const fx = mount(document.getElementById('stage')!);
+const page = surface();
+const fx = mount(document.getElementById('stage')!, { transparent: page.transparent });
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -23,4 +24,6 @@ panel((gui) => {
   light.add(c, 'dispersion', 0, 12, 0.1);
   light.add(c, 'grain', 0, 0.5, 0.01);
   light.add(c, 'grainPeriod', 0, 10, 0.1).name('grain morph (s)');
+
+  page.add(gui);
 });

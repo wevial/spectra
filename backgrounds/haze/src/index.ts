@@ -49,6 +49,15 @@ export const DEFAULTS = {
 
 export type HazeConfig = typeof DEFAULTS;
 
+export interface HazeOptions extends Partial<HazeConfig> {
+  /**
+   * Draw over the page instead of the palette's base: unlit areas are
+   * see-through and the smoke tints whatever is behind the canvas. Fixed at
+   * mount. Default false.
+   */
+  transparent?: boolean;
+}
+
 export interface HazeHandle {
   /** Live config: mutate fields and the next frame picks them up. */
   config: HazeConfig;
@@ -73,7 +82,7 @@ function hash(n: number) {
  * Without WebGL2 + float targets the container gets the `haze-fallback`
  * class instead.
  */
-export function mount(container: HTMLElement, opts: Partial<HazeConfig> = {}): HazeHandle {
+export function mount(container: HTMLElement, { transparent = false, ...opts }: HazeOptions = {}): HazeHandle {
   const config: HazeConfig = { ...DEFAULTS, ...opts };
 
   let resizeGlow = () => {};
@@ -81,6 +90,7 @@ export function mount(container: HTMLElement, opts: Partial<HazeConfig> = {}): H
   const stage = createStage(container, {
     fallback: 'haze-fallback',
     floatTargets: true,
+    transparent,
     onResize: () => { resizeGlow(); drawn = ''; },
   });
   if (!stage) {
@@ -122,6 +132,7 @@ export function mount(container: HTMLElement, opts: Partial<HazeConfig> = {}): H
     const rainbow = config.palette === 'rainbow';
     const colors = rainbow ? [RAINBOW_BASE, RAINBOW_BASE, RAINBOW_BASE] : PALETTES[config.palette as keyof typeof PALETTES] ?? PALETTES.ember;
     const [base, mid, high] = colors.map(hexToRgb);
+    if (transparent) base.fill(0); // the page is the base
     const w = canvas.clientWidth || 1;
     const h = canvas.clientHeight || 1;
     // One unit: the height, but at most a quarter of the longer side.

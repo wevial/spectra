@@ -76,12 +76,20 @@ const HALO_SIGMA = 2.5;
 /** Wide glow blur, sigma in eighth-resolution texels, applied twice (~45 CSS px). */
 const WIDE_SIGMA = 4;
 
+export interface RibbonsOptions extends Partial<RibbonsConfig> {
+  /**
+   * Draw over the page instead of black: unlit areas are see-through and
+   * the light tints whatever is behind the canvas. Fixed at mount. Default false.
+   */
+  transparent?: boolean;
+}
+
 /**
  * Mount the effect into `container` (which should be positioned and sized).
  * Without WebGL2 + float targets the container gets the `ribbons-fallback`
  * class instead.
  */
-export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {}): RibbonsHandle {
+export function mount(container: HTMLElement, { transparent = false, ...opts }: RibbonsOptions = {}): RibbonsHandle {
   const config: RibbonsConfig = { ...DEFAULTS, ...opts };
 
   let resizeGlow = () => {};
@@ -89,6 +97,7 @@ export function mount(container: HTMLElement, opts: Partial<RibbonsConfig> = {})
   const stage = createStage(container, {
     fallback: 'ribbons-fallback',
     floatTargets: true,
+    transparent,
     onResize: () => { resizeGlow(); drawn = ''; },
   });
   if (!stage) {

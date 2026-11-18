@@ -93,13 +93,18 @@ export interface HyphaeOptions extends Partial<HyphaeConfig> {
    * keeps the effect hidden that long can open on a grown network.
    */
   warm?: number;
+  /**
+   * Draw over the page instead of the palette's ground: unlit areas are see-through and
+   * the light tints whatever is behind the canvas. Fixed at mount. Default false.
+   */
+  transparent?: boolean;
 }
 
-export function mount(container: HTMLElement, { warm: ahead = 0, ...opts }: HyphaeOptions = {}): HyphaeHandle {
+export function mount(container: HTMLElement, { warm: ahead = 0, transparent = false, ...opts }: HyphaeOptions = {}): HyphaeHandle {
   const config: HyphaeConfig = { ...DEFAULTS, ...opts };
 
   let onResize = () => {};
-  const stage = createStage(container, { fallback: 'hyphae-fallback', floatTargets: true, onResize: () => onResize() });
+  const stage = createStage(container, { fallback: 'hyphae-fallback', floatTargets: true, transparent, onResize: () => onResize() });
   if (!stage) {
     return { config, reset() {}, destroy() {} };
   }
@@ -349,7 +354,7 @@ export function mount(container: HTMLElement, { warm: ahead = 0, ...opts }: Hyph
     gl.uniform1i(u.uWide, wide!.attach(4));
     gl.uniform1f(u.uGlow, config.glow);
     gl.uniform1f(u.uBright, 1 - Math.pow(1 - reveal, 3));
-    gl.uniform3fv(u.uGround, colors[0]);
+    gl.uniform3fv(u.uGround, transparent ? [0, 0, 0] : colors[0]); // transparent: the page is the ground
     // Prism: the split turns slowly, so strands at every angle get their turn to fan out.
     const ang = 0.7 + time * 0.012;
     gl.uniform1f(u.uPrism, config.palette === 'prism' ? 1 : 0);

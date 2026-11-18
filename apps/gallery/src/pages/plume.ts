@@ -1,7 +1,8 @@
 import { mount, PAINTS } from '@spectra/plume';
-import { renderNav, panel } from '../shell';
+import { renderNav, panel, surface } from '../shell';
 
 renderNav();
+const page = surface();
 // ?tier=0..4 locks a quality tier (4 = static fallback); ?perf logs the governor;
 // ?paint=<name> picks a palette.
 const params = new URLSearchParams(location.search);
@@ -11,6 +12,7 @@ const fx = mount(document.getElementById('stage')!, {
   paint: paint !== null && paint in PAINTS ? paint : undefined,
   tier: tier === null ? undefined : Number(tier),
   debug: params.has('perf'),
+  transparent: page.transparent,
 });
 
 // Handle on window for poking at it from devtools.
@@ -24,4 +26,6 @@ panel((gui) => {
   gui.add(c, 'currents', 0, 4, 0.05);
   gui.add(c, 'speed', 0, 5, 0.05).name('drift');
   gui.add(c, 'offsetDecay', 0.1, 4, 0.05).name('heal rate');
+
+  page.add(gui);
 });

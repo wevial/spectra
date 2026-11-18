@@ -1,12 +1,15 @@
 import { mount, PALETTES } from '@spectra/hyphae';
 import type { PaletteName } from '@spectra/hyphae';
-import { renderNav, panel } from '../shell';
+import { renderNav, panel, surface } from '../shell';
 
 renderNav();
+const page = surface();
 // ?palette=<name> picks a palette, so each has its own link.
 const palette = new URLSearchParams(location.search).get('palette');
-const fx = mount(document.getElementById('stage')!,
-  palette !== null && palette in PALETTES ? { palette: palette as PaletteName } : {});
+const fx = mount(document.getElementById('stage')!, {
+  ...(palette !== null && palette in PALETTES ? { palette: palette as PaletteName } : {}),
+  transparent: page.transparent,
+});
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -39,4 +42,6 @@ panel((gui) => {
   growth.add(c, 'deposit', 0.01, 0.5, 0.005);
   growth.add(c, 'decay', 0.5, 0.99, 0.005);
   growth.add({ reset: () => fx.reset() }, 'reset').name('regrow');
+
+  page.add(gui);
 });

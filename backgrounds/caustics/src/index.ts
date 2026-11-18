@@ -52,6 +52,14 @@ export const DEFAULTS = {
 
 export type CausticsConfig = typeof DEFAULTS;
 
+export interface CausticsOptions extends Partial<CausticsConfig> {
+  /**
+   * Draw over the page instead of the pool floor: unlit areas are see-through and
+   * the light tints whatever is behind the canvas. Fixed at mount. Default false.
+   */
+  transparent?: boolean;
+}
+
 export interface CausticsHandle {
   /** Live config: mutate fields and the next frame picks them up. */
   config: CausticsConfig;
@@ -186,7 +194,7 @@ export function gaussianTaps(sigma: number) {
  * Without WebGL2 + float targets the container gets the `caustics-fallback`
  * class instead.
  */
-export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}): CausticsHandle {
+export function mount(container: HTMLElement, { transparent = false, ...opts }: CausticsOptions = {}): CausticsHandle {
   const config: CausticsConfig = { ...DEFAULTS, ...opts };
 
   let resizeLight = () => {};
@@ -194,6 +202,7 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
   const stage = createStage(container, {
     fallback: 'caustics-fallback',
     floatTargets: true,
+    transparent,
     onResize: () => { resizeLight(); drawn = ''; },
   });
   if (!stage) {
@@ -460,7 +469,7 @@ export function mount(container: HTMLElement, opts: Partial<CausticsConfig> = {}
     light!.attach(0);
     glow!.attach(1);
     const [floor, sun] = colors.map(hexToLinear);
-    gl.uniform3fv(u.uFloor, floor);
+    gl.uniform3fv(u.uFloor, transparent ? [0, 0, 0] : floor); // transparent: the page is the floor
     gl.uniform3fv(u.uSun, sun);
     gl.uniform1f(u.uIntensity, config.intensity * (layers ? LAYER_INTENSITY : 1));
     gl.uniform1f(u.uSharpness, config.sharpness + (layers ? LAYER_SHARPNESS : 0));

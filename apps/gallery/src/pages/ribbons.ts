@@ -1,8 +1,9 @@
 import { mount, PALETTES } from '@spectra/ribbons';
-import { renderNav, panel } from '../shell';
+import { renderNav, panel, surface } from '../shell';
 
 renderNav();
-const fx = mount(document.getElementById('stage')!);
+const page = surface();
+const fx = mount(document.getElementById('stage')!, { transparent: page.transparent });
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -30,4 +31,6 @@ panel((gui) => {
   light.add(c, 'glow', 0, 3, 0.05);
   light.add(c, 'grain', 0, 0.2, 0.005);
   light.add(c, 'grainPeriod', 0, 10, 0.1).name('grain morph (s)');
+
+  page.add(gui);
 });

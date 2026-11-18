@@ -34,6 +34,42 @@ export function renderNav() {
   document.body.appendChild(menu);
 }
 
+const surfaceState = { transparent: false, page: 'dark' as 'dark' | 'light' };
+
+/**
+ * The page under a background, for judging it on dark and light pages.
+ * `?transparent` mounts the effect over the page instead of its own ground;
+ * `?page=light` puts a light page behind it. Returns the mount option, and
+ * `add(gui)` for the toggles: the page color switches live, transparency
+ * reloads, since it's fixed at mount.
+ */
+export function surface() {
+  const params = new URLSearchParams(location.search);
+  surfaceState.transparent = params.has('transparent');
+  surfaceState.page = params.get('page') === 'light' ? 'light' : 'dark';
+  const apply = () => { document.documentElement.dataset.page = surfaceState.page; };
+  const setParam = (key: string, on: boolean, value = '') => {
+    const url = new URL(location.href);
+    if (on) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+    return url;
+  };
+  apply();
+  return {
+    transparent: surfaceState.transparent,
+    add(gui: GUI) {
+      const page = gui.addFolder('page');
+      page.add(surfaceState, 'transparent').onChange((on: boolean) => {
+        location.href = setParam('transparent', on).href;
+      });
+      page.add(surfaceState, 'page', ['dark', 'light']).name('color').onChange((color: string) => {
+        history.replaceState(null, '', setParam('page', color === 'light', 'light'));
+        apply();
+      });
+    },
+  };
+}
+
 /**
  * Tuning panel over an effect's live config. `copy` puts the values you
  * changed on the clipboard as the options object for `mount()`.
@@ -45,7 +81,10 @@ export function panel(build: (gui: GUI) => void) {
     copy() {
       const changed: Record<string, unknown> = {};
       for (const c of gui.controllersRecursive()) {
-        if (c.getValue() !== c.initialValue) changed[c.property] = c.getValue();
+        // The page color isn't the effect's; transparency is a mount option whenever it's on.
+        if (c.object === surfaceState) {
+          if (c.property === 'transparent' && c.getValue()) changed.transparent = true;
+        } else if (c.getValue() !== c.initialValue) changed[c.property] = c.getValue();
       }
       void navigator.clipboard.writeText(JSON.stringify(changed, null, 2));
     },

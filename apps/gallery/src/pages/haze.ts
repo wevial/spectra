@@ -1,8 +1,9 @@
 import { mount, PALETTES } from '@spectra/haze';
-import { renderNav, panel } from '../shell';
+import { renderNav, panel, surface } from '../shell';
 
 renderNav();
-const fx = mount(document.getElementById('stage')!);
+const page = surface();
+const fx = mount(document.getElementById('stage')!, { transparent: page.transparent });
 
 // Handle on window for poking at it from devtools.
 (window as unknown as { fx: typeof fx }).fx = fx;
@@ -22,4 +23,6 @@ panel((gui) => {
   finish.add(c, 'grainPeriod', 0, 10, 0.1).name('grain morph (s)');
   finish.add(c, 'fadeBottom', 0, 1, 0.01).name('fade bottom');
   finish.add(c, 'fadeSide', -1, 1, 0.01).name('fade side');
+
+  page.add(gui);
 });

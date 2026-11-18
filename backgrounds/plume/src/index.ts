@@ -20,6 +20,11 @@ export interface PlumeOptions {
   speed?: number;
   /** Ground color under the paint, hex. Default the palette's. */
   ground?: string;
+  /**
+   * Draw over the page instead of the ground: glowing palettes tint it with
+   * their light, ink palettes lay their ink on it. Fixed at mount. Default false.
+   */
+  transparent?: boolean;
   /** Lock a quality tier, 0–3 (4 = static fallback). */
   tier?: number;
   /** Log the quality governor's decisions. */
