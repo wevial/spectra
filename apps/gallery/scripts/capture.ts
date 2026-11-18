@@ -158,7 +158,7 @@ async function main() {
       }
 
       const cut = findCut(frames, isCursor(effect));
-      const { loop, blend, jump } = closeLoop(frames, cut);
+      const { loop, blend, jump } = closeLoop(frames, cut, !GLOBAL_DISSOLVE.has(effect));
       const raw = join(tmp, `${effect}.rgba`);
       await Bun.write(raw, concat(loop));
       const poster = await page.evaluate(
@@ -195,6 +195,13 @@ async function main() {
   console.log(`\n${report.join('\n')}\n\nblend: how far apart the crossfaded ends are, in typical frame-to-frame changes (near 0 is clean). seam: last→first frame change, same scale (~1 is seamless).`);
   if (failed) process.exit(1);
 }
+
+/**
+ * Effects that crossfade all at once instead of staggered: ribbons are
+ * translucent, so a global dissolve just looks like extra ribbons for a
+ * moment, while a staggered one cuts them into fragments.
+ */
+const GLOBAL_DISSOLVE: ReadonlySet<Effect> = new Set(['ribbons']);
 
 /** Share of the overlap each pixel takes to switch; the rest staggers pixels by MASK. */
 const SWITCH = 0.3;
@@ -240,7 +247,7 @@ function mulberry(seed: number) {
  * The loop at `cut`, with the OVERLAP seconds after it crossfaded into its
  * start: the last frame then leads into the first like any other pair.
  */
-function closeLoop(frames: Uint8Array[], { start, length: n }: Cut) {
+function closeLoop(frames: Uint8Array[], { start, length: n }: Cut, staggered: boolean) {
   const k = OVERLAP * PREVIEW.fps;
   const { width: w, height: h } = PREVIEW;
   const loop = frames.slice(start, start + n).map((f, i) => {
@@ -251,7 +258,7 @@ function closeLoop(frames: Uint8Array[], { start, length: n }: Cut) {
     for (let y = 0; y < h; y++) {
       // GL rows run bottom-up; the mask doesn't care which way.
       for (let x = 0; x < w; x++) {
-        const t = (p - MASK[y * w + x] * (1 - SWITCH)) / SWITCH;
+        const t = staggered ? (p - MASK[y * w + x] * (1 - SWITCH)) / SWITCH : p;
         const wgt = t <= 0 ? 0 : t >= 1 ? 1 : smooth(t);
         const j = (y * w + x) * 4;
         out[j] = tail[j] + (f[j] - tail[j]) * wgt + 0.5;
